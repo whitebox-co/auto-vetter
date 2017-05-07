@@ -5,7 +5,7 @@ Log = {
         console.log(chalk.bold.red('ERROR'), message);
     },
     info: (message) => {
-        console.log(chalk.bold.blue('INFO'), message);
+        console.log(chalk.bold.blue('❯'), message);
     },
     warn: (message) => {
         console.log(chalk.bold.yellow('WARN'), message);

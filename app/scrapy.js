@@ -4,9 +4,11 @@
  * @author James Stine <Leon.Blade@gmail.com>
  */
 
+const chalk = require('chalk');
 const request = require('request-promise');
 const Log = require('../util/log');
 const sleep = require('../util/sleep');
+const ora = require('ora');
 
 class Scrapy {
 
@@ -30,6 +32,11 @@ class Scrapy {
      * @returns {String}      Returns the data from the scrape
      */
     async scrape(url) {
+        // log the job request
+        Log.info(`Creating job for: ${chalk.dim(url)}`);
+
+        let spinner = ora('Requesting job...').start();
+
         // create a request to scrapy
         const response = await request({
             method: 'POST',
@@ -46,10 +53,18 @@ class Scrapy {
             }
         });
 
+        spinner.succeed('Job requested!');
+
         // parse the JSON response
         const json = JSON.parse(response);
+
+        spinner = ora('Waiting on job...').start();
+
         // wait for the job to complete
         const job_data = await this.checkScrape(json.jobid);
+
+        spinner.succeed('Job complete!');
+
         // pull the S3 URL out and get the scrape data
         const html = await request(job_data.s3_url);
 
