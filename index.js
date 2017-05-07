@@ -13,6 +13,7 @@ const cheerio = require('cheerio');
 const program = require('commander');
 const Log = require('./util/log');
 const Scrapy = require('./app/scrapy');
+const Sheets = require('./app/sheets');
 
 // set the program version
 program.version('0.1.0');
@@ -44,6 +45,32 @@ program
         const h2 = $('h2').text();
 
         console.log(`h2 = ${h2}`);
+    });
+
+program
+    .command('google')
+    .description('Google Sheets API test')
+    .action(async () => {
+        try {
+            // create new instance of sheets
+            const sheets = new Sheets(
+                process.env.GOOGLE_CLIENT_ID,
+                process.env.GOOGLE_CLIENT_SECRET
+            );
+
+            // authenticate with google
+            await sheets.authenticate();
+
+            const data = await sheets.getSheetRange(
+                '1Gtleo_dur1sOG88BwOQVJ8ZXVzGmbI1lIy1KfqPtIr0',
+                'Vetting!C2:C4'
+            );
+
+            console.log(data);
+        }
+        catch (e) {
+            Log.error(e);
+        }
     });
 
 // parse the input and run the commander program

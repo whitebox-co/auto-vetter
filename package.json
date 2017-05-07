@@ -4,8 +4,7 @@
   "description": "Scraper for Whitebox",
   "main": "index.js",
   "scripts": {
-    "babel": "babel-node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "babel": "babel-node"
   },
   "author": "James Stine",
   "license": "ISC",
@@ -15,6 +14,11 @@
     "cheerio": "^0.22.0",
     "commander": "^2.9.0",
     "dotenv": "^4.0.0",
+    "express": "^4.15.2",
+    "google-auth-library": "^0.10.0",
+    "googleapis": "^19.0.0",
+    "http-shutdown": "^1.2.0",
+    "opn": "^5.0.0",
     "progress": "^2.0.0",
     "request": "^2.81.0",
     "request-promise": "^4.2.0"
@@ -25,7 +29,9 @@
     "babel-preset-es2017": "^6.24.1"
   },
   "babel": {
-    "presets": ["es2017"],
+    "presets": [
+      "es2017"
+    ],
     "plugins": [
       "transform-async-to-generator"
     ]
