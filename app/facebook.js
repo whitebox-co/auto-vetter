@@ -39,6 +39,19 @@ class Facebook {
         return JSON.parse(await request(url));
     }
 
+    async batch(batch) {
+        // form request for the batch
+        const data = await request.post(PREFIX).form({
+            access_token: this.access_token,
+            batch: JSON.stringify(batch),
+            include_headers: false
+        });
+        // loop through the data and pull out the body from each
+        return JSON.parse(data).map((e, i) => {
+            return JSON.parse(e.body);
+        });
+    }
+
 }
 
 module.exports = Facebook;

@@ -8,7 +8,7 @@ Log = {
         console.log(chalk.bold.blue('❯'), message);
     },
     warn: (message) => {
-        console.log(chalk.bold.yellow('WARN'), message);
+        console.log(chalk.bold.yellow('‼'), message);
     }
 };
 

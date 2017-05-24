@@ -101,6 +101,19 @@ class Sheets {
     }
 
     /**
+     * Gets sheet ranges
+     * @param   {Sheet}  spreadsheetId
+     * @param   {Sheet}  range
+     * @returns {Promise}
+     */
+    async getSheetRanges(spreadsheetId, ranges) {
+        return await asyncWrap(
+            [ sheets.spreadsheets.values, 'batchGet' ],
+            { auth: this.oauth_client, spreadsheetId, ranges }
+        );
+    }
+
+    /**
      * Store the access token on the machine
      * @param   {String} token
      */

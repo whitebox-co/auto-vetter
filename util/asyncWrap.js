@@ -12,14 +12,19 @@
 
 module.exports = async (fn, ...args) => {
     return new Promise((resolve, reject) => {
-        args.push((err, val) => {
-            if (err)
-                return reject(err);
-            return resolve(val);
-        });
-        let thisArg = this;
-        if (Array.isArray(fn))
-            thisArg = fn.shift();
-        thisArg[fn].apply(thisArg, args);
+        try {
+            args.push((err, val) => {
+                if (err)
+                    return reject(err);
+                return resolve(val);
+            });
+            let thisArg = this;
+            if (Array.isArray(fn))
+                thisArg = fn.shift();
+            thisArg[fn].apply(thisArg, args);
+        }
+        catch (ex) {
+            reject(ex);
+        }
     });
 }
