@@ -12,8 +12,9 @@ const googleAuth = require('google-auth-library');
 const authServer = require('../util/authServer');
 const Log = require('../util/log');
 const asyncWrap = require('../util/asyncWrap');
+const _ = require('lodash');
 
-const SCOPES = [ 'https://www.googleapis.com/auth/spreadsheets.readonly' ];
+const SCOPES = [ 'https://www.googleapis.com/auth/spreadsheets' ];
 const TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE) + '/.credentials/';
 const TOKEN_PATH = TOKEN_DIR + 'oauth-google-sheets.json';
 
@@ -88,28 +89,103 @@ class Sheets {
     }
 
     /**
+     * Gets an array of sheets
+     * @param   {String} spreadsheetId
+     * @returns {Promise}
+     */
+    async getSheets(spreadsheetId) {
+        const data = await asyncWrap(
+            [ sheets.spreadsheets, 'get' ],
+            { auth: this.oauth_client, spreadsheetId }
+        );
+        return _.map(data.sheets, 'properties.title');
+    }
+
+    /**
      * Gets sheet range
      * @param   {Sheet}  spreadsheetId
      * @param   {Sheet}  range
      * @returns {Promise}
      */
-    async getSheetRange(spreadsheetId, range) {
+    async get(spreadsheetId, range, majorDimension = 'COLUMNS') {
         return await asyncWrap(
             [ sheets.spreadsheets.values, 'get' ],
-            { auth: this.oauth_client, spreadsheetId, range }
+            { auth: this.oauth_client, spreadsheetId, range, majorDimension }
         );
     }
 
     /**
-     * Gets sheet ranges
+     * Gets sheet multiple ranges
      * @param   {Sheet}  spreadsheetId
      * @param   {Sheet}  range
      * @returns {Promise}
      */
-    async getSheetRanges(spreadsheetId, ranges) {
+    async batchGet(spreadsheetId, ranges, majorDimension = 'COLUMNS') {
         return await asyncWrap(
             [ sheets.spreadsheets.values, 'batchGet' ],
-            { auth: this.oauth_client, spreadsheetId, ranges }
+            { auth: this.oauth_client, spreadsheetId, ranges, majorDimension }
+        );
+    }
+
+    /**
+     * Update values for one sheet range
+     * @param   {String}    spreadsheetId
+     * @param   {String}    range
+     * @param   {String[]}  values
+     * @returns {Promise}
+     */
+    async update(spreadsheetId, range, values) {
+        return await asyncWrap(
+            [ sheets.spreadsheets.values, 'update' ],
+            {
+                auth: this.oauth_client,
+                spreadsheetId,
+                range,
+                valueInputOption: 'USER_ENTERED',
+                resource: {
+                    values: [ values ],
+                    majorDimension: 'COLUMNS'
+                }
+            }
+        );
+    }
+
+    /**
+     * Update values for multiple sheet ranges
+     * @param   {String}    spreadsheetId
+     * @param   {String[]}    ranges
+     * @param   {String[]}  values
+     * @returns {Promise}
+     */
+    async batchUpdate(spreadsheetId, ranges, values) {
+        // sanitation of input
+        if (!Array.isArray(ranges) || !Array.isArray(values))
+            throw Error('Invalid data passed to update sheet ranges');
+        if (ranges.length != values.length)
+            throw Error('Ranges and Values arrays do not match in length');
+
+        // data for batch update
+        const data = [];
+
+        // loop over ranges could be ranges or values as lengths are matching
+        for (let i in ranges) {
+            data.push({
+                range: ranges[i],
+                values: [ values[i] ],
+                majorDimension: 'COLUMNS'
+            });
+        }
+
+        return await asyncWrap(
+            [ sheets.spreadsheets.values, 'batchUpdate' ],
+            {
+                auth: this.oauth_client,
+                spreadsheetId,
+                resource: {
+                    valueInputOption: 'USER_ENTERED',
+                    data
+                }
+            }
         );
     }
 
@@ -131,6 +207,24 @@ class Sheets {
         // write the token to the machine
         fs.writeFileSync(TOKEN_PATH, JSON.stringify(token));
     }
+
+    columnToLetter(column) {
+        let temp, letter = '';
+        while (column > 0) {
+            temp = (column - 1) % 26;
+            letter = String.fromCharCode(temp + 65) + letter;
+            column = (column - temp - 1) / 26;
+        }
+        return letter;
+    }
+
+    letterToColumn(letter) {
+        let column = 0, length = letter.length;
+        for (let i = 0; i < length; i++)
+            column += (letter.charCodeAt(i) - 64) * Math.pow(26, length - i - 1);
+        return column;
+    }
+
 }
 
 module.exports = Sheets;

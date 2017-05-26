@@ -1,18 +1,63 @@
 const MongoClient = require('mongodb').MongoClient;
 const asyncWrap = require('../util/asyncWrap');
+const _ = require('lodash');
 
 class MongoDB {
 
-    async connect(host, port, db) {
+    constructor(host, port, db) {
+        this.host = host;
+        this.port = port;
+        this.db = db;
+    }
+
+    async connect() {
         try {
-            this.client = await asyncWrap([MongoClient,'connect'], `mongodb://${host}:${port}/${db}`);
+            const url = `mongodb://${this.host}:${this.port}/${this.db}`;
+            this.client = await MongoClient.connect(url);
         }
         catch (ex) {
             console.log(ex);
         }
     }
 
-    async find(collection, filter) {
+    async getCollection(name) {
+        try {
+            return await this.client.collection(name);
+        }
+        catch (ex) {
+            return null;
+        }
+    }
+
+    async createCollection(name) {
+        try {
+            return await this.client.createCollection(name);
+        }
+        catch (ex) {
+            console.error(ex);
+        }
+    }
+
+    async drop(name) {
+        try {
+            return await this.client.collection(name).drop();
+        }
+        catch (ex) {
+            console.error(ex);
+        }
+    }
+
+    async doesCollectionExist(name) {
+        try {
+            const data = await this.client.listCollections().toArray();
+            return _.map(data, 'name').indexOf(name) != -1;
+        }
+        catch (ex) {
+            console.error(ex);
+        }
+    }
+
+    async find(collection, filter = {}) {
         if (!this.client)
             return;
 
@@ -33,7 +78,6 @@ class MongoDB {
         const col = this.client.collection(collection);
         // insert data
         try {
-            //return await asyncWrap([ col, 'insert' ], data);
             return await col.insert(data);
         }
         catch (ex) {
