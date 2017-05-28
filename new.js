@@ -7,6 +7,10 @@ const ls = require('log-symbols');
 const Sheets = require('./app/sheets');
 const MongoDB = require('./app/mongodb');
 
+const ErrorStackParser = require('error-stack-parser');
+
+const { getActions, runAction } = require('./actions');
+
 require('dotenv').config();
 
 const client_id = process.env.GOOGLE_CLIENT_ID;
@@ -35,7 +39,7 @@ console.log(boxen(
         type: 'list',
         name: 'launch_action',
         message: 'What do you want to do?',
-        choices: [
+        choices: getActions()/*[
             'New scrape',
             'Resume scrape',
             new inquirer.Separator(),
@@ -43,8 +47,39 @@ console.log(boxen(
             'Scrape Amazon',
             new inquirer.Separator(),
             'Re-authenticate with Google'
-        ]
+        ]*/
     });
+
+    /*runAction(answers.launch_action).then(() => {
+        console.log('come here son');
+    }, () => {
+        console.log('daddy no');
+    }).catch(() => {
+        console.log('gottem coach');
+    });*/
+    try {
+        await runAction(answers.launch_action);
+    }
+    catch (ex) {
+        const e = ErrorStackParser.parse(ex);
+        console.log(JSON.stringify(e));
+        console.log(
+            boxen(
+`${chalk.red.bold('ERROR')} ${ex.message}
+
+${chalk.red.bold('File:')} ${parsed[0].fileName.split('/').pop()}:${parsed[0].lineNumber}:${parsed[0].columnNumber}`,
+                { borderColor: 'red', padding: 1 }
+            )
+        );
+    }
+
+    return;
+
+
+
+
+
+
 
     // if its not what we want then go away
     if (answers.launch_action != 'New scrape')

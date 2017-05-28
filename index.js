@@ -21,6 +21,7 @@ const sleep = require('./util/sleep');
 const urlparse = require('./util/urlparse');
 const fs = require('fs');
 const MongoDB = require('./app/mongodb');
+const _ = require('lodash');
 
 const FB_REGEX = /^(?:(?:http|https):\/\/)?(?:www.)?facebook.com\/(?:(?:\w)*#!\/)?(?:pages\/)?([\w\-]*)?/;
 
@@ -49,33 +50,24 @@ const fb = new Facebook(
     process.env.FACEBOOK_CLIENT_SECRET
 );
 
-const mongo = new MongoDB();
-
-
-
+// create instance of MongoDB
+const mongo = new MongoDB(
+    process.env.MONGO_HOST,
+    process.env.MONGO_PORT,
+    process.env.MONGO_DB_NAME
+);
 
 //
 // NOTE: USER FIELDS PLEASE CHANGE THANKS
-const db = 'fancy_food_show_summer_2017';
+const db = '17o5KZNG-BFB_Booth';
 const sheet_id = '17o5KZNG-BveQSJDu_mMHdmZBebOxmnDA9K0G78ctDg4';
-const sheet_ranges = [ 'FB_Booth!' ];
+const sheet_ranges = [ 'FB_Booth!A2:A', 'FB_Booth!M2:M' ];
 const new_ranges = [ 'FB_Booth!P2:P', 'FB_Booth!Q2:Q' ];
 //
 //
 
-program.command('test').action(async () => {
-    await sheets.authenticate();
-
-    const response = await sheets.batchGet(
-        '1YauSaoQB3BwmtjqpIbL_ncsOIgwf4EUTfR3RGz73kYk',
-        [ 'Sheet1!A2:A', 'Sheet1!B2:B' ]
-    );
-    console.log(response.valueRanges);
-});
-
-
 program.command('update').action(async () => {
-    await mongo.connect('localhost', 27017, 'whitebox');
+    await mongo.connect();
     await sheets.authenticate();
 
     // get all the documents
@@ -86,26 +78,36 @@ program.command('update').action(async () => {
     // NOTE: user input
     const ranges = new_ranges;
     // values arrays
-    const fbids = [];
+    const fburls = [];
     const likes = [];
+
+    // get a last row index to the first in the docs
+    let lastRow = docs[0].row;
 
     // loop over all the docs
     for (let i in docs) {
-        fbids.push(docs[i].fbid);
+        const row = _.parseInt(docs[i].row);
+        if (row - lastRow > 1) {
+            for (let j = 0; j < (row - lastRow) - 1; j++) {
+                fburls.push('');
+                likes.push('');
+            }
+        }
+        fburls.push(docs[i].facebook);
         likes.push(docs[i].hasOwnProperty('likes')?docs[i].likes:'');
+        lastRow = docs[i].row;
     }
-
 
     // update the sheets
     const s = ora('Updating Sheets...');
-    await sheets.batchUpdate(sheet_id, ranges, [ fbids, likes ]);
+    await sheets.batchUpdate(sheet_id, ranges, [ fburls, likes ]);
     s.succeed('Done!');
 
     Log.info('Updated Sheets!');
 });
 
 program.command('prune').action(async () => {
-    await mongo.connect('localhost', 27017, 'whitebox');
+    await mongo.connect();
     const response = await mongo.updateMany(
         db,
         { error: 'Not a valid URL' },
@@ -115,12 +117,12 @@ program.command('prune').action(async () => {
 });
 
 program.command('likes').action(async () => {
-    await mongo.connect('localhost', 27017, 'whitebox');
+    await mongo.connect();
     await fb.authenticate();
 
     // get the fbids from the mongodb
     // NOTE: user input
-    const docs = await mongo.find(db, { fbid: { $ne: null } });
+    const docs = await mongo.find(db, { facebook: { $ne: null } });
 
     // data array
     let data = [];
@@ -130,7 +132,7 @@ program.command('likes').action(async () => {
     // loop over the fbids
     for (let i in docs) {
         // push the fbid onto the batch stack
-        batch.push({ method: 'GET', relative_url: `/v2.9/${docs[i].fbid}?fields=fan_count` });
+        batch.push({ method: 'GET', relative_url: `/v2.9/${docs[i].facebook}?fields=fan_count` });
         if (i != 0 && i % 49 == 0) {
             let s = ora('Batching 50 to FB Graph...');
             const response = await fb.batch(batch);
@@ -148,8 +150,11 @@ program.command('likes').action(async () => {
 
     // loop over all the data
     for (let i in data) {
-        if (data[i].error)
+        if (data[i].error) {
+            //Log.error(data[i].error);
             continue;
+        }
+        Log.info(data[i].fan_count);
         mongo.update(db, { _id: docs[i]._id }, { $set: { likes: data[i].fan_count } });
     }
 
@@ -157,7 +162,7 @@ program.command('likes').action(async () => {
 });
 
 program.command('killdupe').action(async () => {
-    await mongo.connect('localhost', 27017, 'whitebox');
+    await mongo.connect();
     // NOTE: user input
     const response = await mongo.removeDuplicates(db, 'company');
     console.log(response.result);
@@ -171,7 +176,7 @@ program.command('facebook').action(async () => {
     await sheets.authenticate();
 
     // connect to mongodb
-    await mongo.connect('localhost', 27017, 'whitebox');
+    await mongo.connect();
 
     let data;
     try {
@@ -193,39 +198,60 @@ program.command('facebook').action(async () => {
     // done with fetching sheets data
     s.succeed('Done!');
 
+
     // separate out the data
     // NOTE: user input
-    const companies = data.valueRanges[0].values;
-    const urls = data.valueRanges[1].values;
+    const companies = data.valueRanges[0].values.shift();
+    const urls = data.valueRanges[1].values.shift();
 
-    for (let i = 0; i < urls.length; i++) {
+    // collection of row data
+    let rows = [];
+
+    for (let i in urls) {
+        rows.push({
+            row: _.parseInt(i) + 2,
+            company: _.trim(companies[i]),
+            url: urlparse(_.trim(urls[i]))
+        })
+    }
+
+    // remove any of the duplicates
+    rows = _.uniqWith(rows, (i, j) => {
+        return i.url === j.url;
+    });
+
+    for (let i = 0; i < rows.length; i++) {
         // NOTE: user input
-        const url = urlparse(urls[i].shift()).trim();
-        const company = companies[i].shift().trim();
+        const row = rows[i].row;
+        const url = rows[i].url;
+        const company = companies[i];
+
+        const minsert = { row, company, url };
 
         if (!url) {
-            mongo.insert(db, { company, url, error: 'Not a valid URL' }); // NOTE: user input
+            mongo.insert(db, _.merge(minsert, { error: 'Not a valid URL' })); // NOTE: user input
             continue;
         }
 
-        s = ora(`Loading URL for ${chalk.yellow(company)}: ${chalk.dim(url)} ...`, `url_${i}`);
+        s = ora(`Loading URL ${chalk.dim(url)} ...`).start();
 
         try {
             const html = await request({
                 url,
                 followRedirect: true,
+                timeout: 10 * 1000,
                 headers: {
                     'User-Agent': 'node.js'
                 }
             });
             s.succeed(`Done! (${chalk.dim(url)}):${i}`);
-            const fbid = await facebook(html);
-            await mongo.insert(db, { company, url, fbid });
+            const fb = await facebook(html);
+            await mongo.insert(db, _.merge(minsert, { facebook: fb }));
         }
         catch (ex) {
             s.fail('Oh no!');
             // NOTE: user input
-            mongo.insert(db, { company, url, error: 'Failed to scrape' });
+            mongo.insert(db, _.merge(minsert, { error: 'Failed to scrape' }));
         }
     }
 

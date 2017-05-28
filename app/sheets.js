@@ -208,6 +208,11 @@ class Sheets {
         fs.writeFileSync(TOKEN_PATH, JSON.stringify(token));
     }
 
+    /**
+     * Turns a number into a column letter
+     * @param   {Number} column
+     * @returns {String}
+     */
     columnToLetter(column) {
         let temp, letter = '';
         while (column > 0) {
@@ -218,6 +223,11 @@ class Sheets {
         return letter;
     }
 
+    /**
+     * Turns a letter into a column number
+     * @param   {String} letter
+     * @returns {Number}
+     */
     letterToColumn(letter) {
         let column = 0, length = letter.length;
         for (let i = 0; i < length; i++)
