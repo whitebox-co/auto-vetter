@@ -5,6 +5,7 @@ const _ = require('lodash');
 const chalk = require('chalk');
 const Sheets = require('../app/sheets');
 const MongoDB = require('../app/mongodb');
+const Sentry = require('../app/sentry');
 
 require('dotenv').config();
 
@@ -23,25 +24,57 @@ const scrape = async () => {
     // variables used within this function
     let answers, sheetNames;
 
-    // ask for the spreadsheet ID
-    answers = await inquirer.prompt([{
-        type: 'input',
-        name: 'spreadsheetId',
-        message: 'Enter the Google Spreadsheet ID'
-    }]);
-
-    // get the spreadsheet id from answers
-    const spreadsheetId = answers.spreadsheetId;
-    // ensure its not empty
-    if (_.isEmpty(spreadsheetId))
-        throw 'Spreadsheet ID is empty!';
-
     // create instance of sheets
     const sheets = new Sheets(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
 
     try {
         // authenticate with the client
         await sheets.authenticate();
+    }
+    catch (ex) {
+        throw ex;
+    }
+
+    // ask for the spreadsheet ID
+    answers = await inquirer.prompt([{
+        type: 'input',
+        name: 'spreadsheetId',
+        message: 'Enter the Google Spreadsheet ID',
+        validate: async input => {
+            // ensure the entry isn't empty
+            if (_.isEmpty(input))
+                return 'Spreadsheet ID can\'t be empty.';
+
+            // get sheet names to see if the id is valid
+            try {
+                sheetNames = await sheets.getSheets(input);
+            }
+            catch (err) {
+                // sheet request came back 404 (notFound)
+                if (err.code == 404)
+                    return 'Spreadsheet ID not found!';
+
+                // rethrow the exception
+                throw err;
+            }
+
+            return true;
+        }
+    }]);
+
+    // get the spreadsheet id from answers
+    const spreadsheetId = answers.spreadsheetId;
+
+    // breadcrumb our sheet ID as a successful action
+    Sentry.captureBreadcrumb({
+        message: 'User selected spreadsheet ID',
+        category: 'scrape',
+        data: { spreadsheetId }
+    })
+
+    try {
+
+
         // get information about the spreadsheet
         sheetNames = await sheets.getSheets(spreadsheetId);
     }
@@ -51,7 +84,7 @@ const scrape = async () => {
 
     // verify that our sheet names is an array
     if (!_.isArray(sheetNames))
-        throw 'Sheet names came back not as an array';
+        throw new Error('Sheet names came back not as an array');
 
     // get which sheet to use
     answers = await inquirer.prompt([{
@@ -96,7 +129,8 @@ const scrape = async () => {
     const urlData = await sheets.get(spreadsheetId, range);
     // ensure that the values property exists
     if (!_.has(urlData, 'values'))
-        throw Error(`Column '${columnLetter}' does not contain any values!`);
+        throw new Error(`Column '${columnLetter}' does not contain any values!`);
+
     // get the URL values
     const urlValues = urlData.values.shift();
 
@@ -111,7 +145,6 @@ const scrape = async () => {
         await db.connect();
     }
     catch (ex) {
-        //Log.error('Could not connect to the Mongo database!');
         throw ex;
     }
 
@@ -144,7 +177,7 @@ const scrape = async () => {
 
         // prevent infinite loop by only trying up to a limit
         if (incr >= limit)
-            throw Error('Failed creating unique collection name!');
+            throw new Error('Failed creating unique collection name!');
     }
 
     // assign the collection name back to the regular variable

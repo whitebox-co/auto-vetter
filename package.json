@@ -31,8 +31,10 @@
     "opn": "^5.0.0",
     "ora": "^1.2.0",
     "progress": "^2.0.0",
+    "raven": "^2.0.2",
     "request": "^2.81.0",
-    "request-promise": "^4.2.0"
+    "request-promise": "^4.2.0",
+    "window-size": "^1.0.0"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",

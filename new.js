@@ -1,4 +1,3 @@
-const assert = require('assert');
 const inquirer = require('inquirer');
 const Log = require('./util/log');
 const chalk = require('chalk');
@@ -6,8 +5,7 @@ const boxen = require('boxen');
 const ls = require('log-symbols');
 const Sheets = require('./app/sheets');
 const MongoDB = require('./app/mongodb');
-
-const ErrorStackParser = require('error-stack-parser');
+const Sentry = require('./app/sentry');
 
 const { getActions, runAction } = require('./actions');
 
@@ -50,34 +48,12 @@ console.log(boxen(
         ]*/
     });
 
-    /*runAction(answers.launch_action).then(() => {
-        console.log('come here son');
-    }, () => {
-        console.log('daddy no');
-    }).catch(() => {
-        console.log('gottem coach');
-    });*/
-    try {
-        await runAction(answers.launch_action);
-    }
-    catch (ex) {
-        const e = ErrorStackParser.parse(ex);
-        console.log(JSON.stringify(e));
-        console.log(
-            boxen(
-`${chalk.red.bold('ERROR')} ${ex.message}
 
-${chalk.red.bold('File:')} ${parsed[0].fileName.split('/').pop()}:${parsed[0].lineNumber}:${parsed[0].columnNumber}`,
-                { borderColor: 'red', padding: 1 }
-            )
-        );
-    }
+    Sentry.asyncContext(async () => {
+        await runAction(answers.launch_action);
+    });
 
     return;
-
-
-
-
 
 
 

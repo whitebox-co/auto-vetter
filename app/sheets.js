@@ -13,6 +13,7 @@ const authServer = require('../util/authServer');
 const Log = require('../util/log');
 const asyncWrap = require('../util/asyncWrap');
 const _ = require('lodash');
+const Sentry = require('./sentry');
 
 const SCOPES = [ 'https://www.googleapis.com/auth/spreadsheets' ];
 const TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE) + '/.credentials/';
@@ -46,6 +47,11 @@ class Sheets {
             'http://localhost:8080/callback'
         );
 
+        Sentry.captureBreadcrumb({
+            message: 'Logging in to Google Sheets.',
+            category: 'sheets'
+        });
+
         // get token variable ready
         let token;
 
@@ -76,6 +82,11 @@ class Sheets {
             scope: SCOPES
         });
 
+        Sentry.captureBreadcrumb({
+            message: 'Generated URL for access token.',
+            category: 'sheets'
+        });
+
         // get the creds from the URL
         const creds = await authServer.auth_me(auth_url);
         // get the access token from Google
@@ -94,6 +105,13 @@ class Sheets {
      * @returns {Promise}
      */
     async getSheets(spreadsheetId) {
+
+        Sentry.captureBreadcrumb({
+            message: 'Requesting sheets of a specific spreadsheet ID',
+            category: 'sheets',
+            data: { spreadsheetId }
+        });
+
         const data = await asyncWrap(
             [ sheets.spreadsheets, 'get' ],
             { auth: this.oauth_client, spreadsheetId }
@@ -108,6 +126,17 @@ class Sheets {
      * @returns {Promise}
      */
     async get(spreadsheetId, range, majorDimension = 'COLUMNS') {
+
+        Sentry.captureBreadcrumb({
+            message: 'Getting spreadsheet range',
+            category: 'sheets',
+            data: {
+                spreadsheetId,
+                range,
+                majorDimension
+            }
+        });
+
         return await asyncWrap(
             [ sheets.spreadsheets.values, 'get' ],
             { auth: this.oauth_client, spreadsheetId, range, majorDimension }
@@ -121,6 +150,17 @@ class Sheets {
      * @returns {Promise}
      */
     async batchGet(spreadsheetId, ranges, majorDimension = 'COLUMNS') {
+
+        Sentry.captureBreadcrumb({
+            message: 'Requesting batch get from spreadsheet ID',
+            category: 'sheets',
+            data: {
+                spreadsheetId,
+                ranges,
+                majorDimension
+            }
+        });
+
         return await asyncWrap(
             [ sheets.spreadsheets.values, 'batchGet' ],
             { auth: this.oauth_client, spreadsheetId, ranges, majorDimension }
@@ -135,6 +175,17 @@ class Sheets {
      * @returns {Promise}
      */
     async update(spreadsheetId, range, values) {
+
+        Sentry.captureBreadcrumb({
+            message: 'Updating spreadsheet data',
+            category: 'sheets',
+            data: {
+                spreadsheetId,
+                range,
+                values
+            }
+        });
+
         return await asyncWrap(
             [ sheets.spreadsheets.values, 'update' ],
             {
@@ -176,6 +227,17 @@ class Sheets {
             });
         }
 
+        Sentry.captureBreadcrumb({
+            message: 'Batch updating spreadsheet data',
+            category: 'sheets',
+            data: {
+                spreadsheetId,
+                ranges,
+                values,
+                data
+            }
+        });
+
         return await asyncWrap(
             [ sheets.spreadsheets.values, 'batchUpdate' ],
             {
@@ -201,7 +263,7 @@ class Sheets {
         catch (e) {
             // if the error isn't that the folder exists
             if (e.code != 'EEXIST')
-                throw Log.error(e);
+                Sentry.captureException(e);
         }
 
         // write the token to the machine
