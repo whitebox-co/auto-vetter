@@ -15,17 +15,19 @@ const MONGO_HOST = process.env.MONGO_HOST;
 const MONGO_PORT = process.env.MONGO_PORT;
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME;
 
+// create instance of sheets
+const sheets = new Sheets(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+// create the mongo db instance
+const db = new MongoDB(MONGO_HOST, MONGO_PORT, MONGO_DB_NAME);
+
 /**
- * Scrape action which handles
- * @returns {Promise} [description]
+ * Scrape action which creates new scrapes
+ * @returns {Promise}
  */
-const scrape = async () => {
+const createScrape = async () => {
 
     // variables used within this function
-    let answers, sheetNames;
-
-    // create instance of sheets
-    const sheets = new Sheets(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
+    let answers, sheetInfo, sheetNames, sheetTitle, spreadsheetId;
 
     try {
         // authenticate with the client
@@ -35,35 +37,50 @@ const scrape = async () => {
         throw ex;
     }
 
-    // ask for the spreadsheet ID
-    answers = await inquirer.prompt([{
-        type: 'input',
-        name: 'spreadsheetId',
-        message: 'Enter the Google Spreadsheet ID',
-        validate: async input => {
-            // ensure the entry isn't empty
-            if (_.isEmpty(input))
-                return 'Spreadsheet ID can\'t be empty.';
+    // loop over until we accept
+    while (true) {
+        // ask for the spreadsheet ID
+        answers = await inquirer.prompt([{
+            type: 'input',
+            name: 'spreadsheetId',
+            message: 'Enter the Google Spreadsheet ID',
+            validate: async input => {
+                // ensure the entry isn't empty
+                if (_.isEmpty(input))
+                    return 'Spreadsheet ID can\'t be empty.';
 
-            // get sheet names to see if the id is valid
-            try {
-                sheetNames = await sheets.getSheets(input);
+                // get sheet names to see if the id is valid
+                try {
+                    sheetInfo = await sheets.getSpreadsheetInfo(input);
+                }
+                catch (err) {
+                    // sheet request came back 404 (notFound)
+                    if (err.code == 404)
+                        return 'Spreadsheet ID not found!';
+
+                    // rethrow the exception
+                    throw err;
+                }
+
+                sheetTitle = sheetInfo.properties.title;
+                sheetNames = _.map(sheetInfo, 'sheets.properties.title');
+                spreadsheetId = input;
+
+                return true;
             }
-            catch (err) {
-                // sheet request came back 404 (notFound)
-                if (err.code == 404)
-                    return 'Spreadsheet ID not found!';
+        }]);
 
-                // rethrow the exception
-                throw err;
-            }
+        // ask if this is the right one
+        answers = await inquirer.prompt([{
+            type: 'confirm',
+            name: 'yes',
+            message: `${sheetInfo.properties.title}, is that correct?`
+        }]);
 
-            return true;
-        }
-    }]);
+        if (answers.yes)
+            break;
 
-    // get the spreadsheet id from answers
-    const spreadsheetId = answers.spreadsheetId;
+    }
 
     // breadcrumb our sheet ID as a successful action
     Sentry.captureBreadcrumb({
@@ -73,8 +90,6 @@ const scrape = async () => {
     })
 
     try {
-
-
         // get information about the spreadsheet
         sheetNames = await sheets.getSheets(spreadsheetId);
     }
@@ -85,6 +100,8 @@ const scrape = async () => {
     // verify that our sheet names is an array
     if (!_.isArray(sheetNames))
         throw new Error('Sheet names came back not as an array');
+    if (!sheetNames.length)
+        throw new Error('No sheet names found');
 
     // get which sheet to use
     answers = await inquirer.prompt([{
@@ -136,9 +153,6 @@ const scrape = async () => {
 
     // log how many URLs we have
     Log.info(`This sheet has ${chalk.blue.bold(urlValues.length)} URLs to scrape.`);
-
-    // create the mongo db instance
-    const db = new MongoDB(MONGO_HOST, MONGO_PORT, MONGO_DB_NAME);
 
     try {
         // connect to the database
@@ -201,9 +215,44 @@ const scrape = async () => {
             await db.drop(collectionName);
     }
 
+    // insert information about the sheet for the scrape job
+    await db.insert('sheets', { name: sheetTitle, spreadsheetId, sheetName });
+
     // log which name we're using for the collection
     Log.info(`The MongoDB collection name is ${chalk.blue.bold(collectionName)}`);
 
 }
 
-module.exports = createAction('Start new scrape', scrape);
+/**
+ * Scrape action which runs existing scrapes
+ * @returns {Promise}
+ */
+const runScraper = async () => {
+
+    // pull in the existing scrapes
+    await db.connect();
+    const data = await db.find('sheets');
+    const choices = _.map(data, sheet => {
+        return {
+            name: `${sheet.name} (${sheet.sheetName})`,
+            value: sheet._id
+        }
+    });
+
+    let answers;
+
+    answers = inquirer.prompt([{
+        type: 'list',
+        name: 'scrape',
+        message: 'Which scrape do you want to run',
+        choices
+    }])
+
+    //await sheets.authenticate();
+
+}
+
+module.exports = {
+    create_scrape: createAction('Create new scrape', createScrape),
+    run_scrape: createAction('Run scraper', runScraper)
+};

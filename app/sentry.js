@@ -6,8 +6,13 @@ require('dotenv').config();
 class Sentry {
 
     constructor() {
-        // configure and install raven for sentry
-        Raven.config(process.env.SENTRY_DSN).install();
+        try {
+            // configure and install raven for sentry
+            Raven.config(process.env.SENTRY_DSN).install();
+        }
+        catch (ex) {
+            printError(ex);
+        }
     }
 
     /**

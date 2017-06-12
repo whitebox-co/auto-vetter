@@ -1,6 +1,7 @@
 const MongoClient = require('mongodb').MongoClient;
 const asyncWrap = require('../util/asyncWrap');
 const _ = require('lodash');
+const Sentry = require('./sentry');
 
 class MongoDB {
 
@@ -16,7 +17,7 @@ class MongoDB {
             this.client = await MongoClient.connect(url);
         }
         catch (ex) {
-            console.log(ex);
+            Sentry.captureException(ex);
         }
     }
 
@@ -34,7 +35,7 @@ class MongoDB {
             return await this.client.createCollection(name);
         }
         catch (ex) {
-            console.error(ex);
+            Sentry.captureException(ex);
         }
     }
 
@@ -43,7 +44,7 @@ class MongoDB {
             return await this.client.collection(name).drop();
         }
         catch (ex) {
-            console.error(ex);
+            Sentry.captureException(ex);
         }
     }
 
@@ -53,7 +54,7 @@ class MongoDB {
             return _.map(data, 'name').indexOf(name) != -1;
         }
         catch (ex) {
-            console.error(ex);
+            Sentry.captureException(ex);
         }
     }
 
@@ -66,8 +67,7 @@ class MongoDB {
             return await col.find(filter).toArray();
         }
         catch (ex) {
-            console.log(ex);
-            throw ex;
+            Sentry.captureException(ex);
         }
     }
 
@@ -81,8 +81,7 @@ class MongoDB {
             return await col.insert(data);
         }
         catch (ex) {
-            console.log(ex);
-            throw ex;
+            Sentry.captureException(ex);
         }
     }
 
@@ -114,8 +113,7 @@ class MongoDB {
             ]).toArray();
         }
         catch (ex) {
-            console.error(ex);
-            throw ex;
+            Sentry.captureException(ex);
         }
     }
 
@@ -163,8 +161,7 @@ class MongoDB {
             });
         }
         catch (ex) {
-            console.error(ex);
-            throw ex;
+            Sentry.captureException(ex);
         }
     }
 
@@ -178,8 +175,7 @@ class MongoDB {
             return await col.update(filter, data);
         }
         catch (ex) {
-            console.log(ex);
-            throw ex;
+            Sentry.captureException(ex);
         }
     }
 
@@ -194,8 +190,7 @@ class MongoDB {
             return await col.updateMany(filter, data);
         }
         catch (ex) {
-            console.log(ex);
-            throw ex;
+            Sentry.captureException(ex);
         }
     }
 

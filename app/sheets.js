@@ -112,11 +112,30 @@ class Sheets {
             data: { spreadsheetId }
         });
 
-        const data = await asyncWrap(
+        const data = await this.getSpreadsheetInfo(spreadsheetId);
+        return _.map(data.sheets, 'properties.title');
+    }
+
+    /**
+     * Returns informtion about spreadsheet
+     * @param {String} spreadsheetId The specified spreadsheet id
+     * @returns {Promise}
+     */
+    async getSpreadsheetInfo(spreadsheetId) {
+
+        Sentry.captureBreadcrumb({
+            message: 'Getting spreadsheet info',
+            category: 'sheets',
+            data: {
+                spreadsheetId
+            }
+        });
+
+        return await asyncWrap(
             [ sheets.spreadsheets, 'get' ],
             { auth: this.oauth_client, spreadsheetId }
         );
-        return _.map(data.sheets, 'properties.title');
+
     }
 
     /**
