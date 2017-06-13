@@ -15,6 +15,9 @@ const asyncWrap = require('../util/asyncWrap');
 const _ = require('lodash');
 const Sentry = require('./sentry');
 
+// curry the breadcrumb function
+const captureBreadCrumb = _.curry(Sentry.captureBreadcrumb)('sheets');
+
 const SCOPES = [ 'https://www.googleapis.com/auth/spreadsheets' ];
 const TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE) + '/.credentials/';
 const TOKEN_PATH = TOKEN_DIR + 'oauth-google-sheets.json';
@@ -47,10 +50,7 @@ class Sheets {
             'http://localhost:8080/callback'
         );
 
-        Sentry.captureBreadcrumb({
-            message: 'Logging in to Google Sheets.',
-            category: 'sheets'
-        });
+        captureBreadcrumb('Logging in to Google Sheets.');
 
         // get token variable ready
         let token;
@@ -82,10 +82,7 @@ class Sheets {
             scope: SCOPES
         });
 
-        Sentry.captureBreadcrumb({
-            message: 'Generated URL for access token.',
-            category: 'sheets'
-        });
+        captureBreadcrumb('Generated URL for access token.');
 
         // get the creds from the URL
         const creds = await authServer.auth_me(auth_url);
@@ -105,13 +102,7 @@ class Sheets {
      * @returns {Promise}
      */
     async getSheets(spreadsheetId) {
-
-        Sentry.captureBreadcrumb({
-            message: 'Requesting sheets of a specific spreadsheet ID',
-            category: 'sheets',
-            data: { spreadsheetId }
-        });
-
+        captureBreadcrumb('Requesting sheets of a specific spreadsheet ID', { spreadsheetId });
         const data = await this.getSpreadsheetInfo(spreadsheetId);
         return _.map(data.sheets, 'properties.title');
     }
@@ -123,13 +114,7 @@ class Sheets {
      */
     async getSpreadsheetInfo(spreadsheetId) {
 
-        Sentry.captureBreadcrumb({
-            message: 'Getting spreadsheet info',
-            category: 'sheets',
-            data: {
-                spreadsheetId
-            }
-        });
+        captureBreadcrumb('Getting spreadsheet info', { spreadsheetId });
 
         return await asyncWrap(
             [ sheets.spreadsheets, 'get' ],
@@ -146,15 +131,14 @@ class Sheets {
      */
     async get(spreadsheetId, range, majorDimension = 'COLUMNS') {
 
-        Sentry.captureBreadcrumb({
-            message: 'Getting spreadsheet range',
-            category: 'sheets',
-            data: {
+        captureBreadcrumb(
+            'Getting spreadsheet range',
+            {
                 spreadsheetId,
                 range,
                 majorDimension
             }
-        });
+        );
 
         return await asyncWrap(
             [ sheets.spreadsheets.values, 'get' ],
@@ -170,15 +154,14 @@ class Sheets {
      */
     async batchGet(spreadsheetId, ranges, majorDimension = 'COLUMNS') {
 
-        Sentry.captureBreadcrumb({
-            message: 'Requesting batch get from spreadsheet ID',
-            category: 'sheets',
-            data: {
+        captureBreadcrumb(
+            'Requesting batch get from spreadsheet ID',
+            {
                 spreadsheetId,
                 ranges,
                 majorDimension
             }
-        });
+        );
 
         return await asyncWrap(
             [ sheets.spreadsheets.values, 'batchGet' ],
@@ -195,15 +178,14 @@ class Sheets {
      */
     async update(spreadsheetId, range, values) {
 
-        Sentry.captureBreadcrumb({
-            message: 'Updating spreadsheet data',
-            category: 'sheets',
-            data: {
+        captureBreadcrumb(
+            'Updating spreadsheet data',
+            {
                 spreadsheetId,
                 range,
                 values
             }
-        });
+        );
 
         return await asyncWrap(
             [ sheets.spreadsheets.values, 'update' ],
@@ -246,16 +228,15 @@ class Sheets {
             });
         }
 
-        Sentry.captureBreadcrumb({
-            message: 'Batch updating spreadsheet data',
-            category: 'sheets',
-            data: {
+        captureBreadcrumb(
+            'Batch updating spreadsheet data',
+            {
                 spreadsheetId,
                 ranges,
                 values,
                 data
             }
-        });
+        );
 
         return await asyncWrap(
             [ sheets.spreadsheets.values, 'batchUpdate' ],

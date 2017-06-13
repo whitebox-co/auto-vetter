@@ -15,6 +15,9 @@ const MONGO_HOST = process.env.MONGO_HOST;
 const MONGO_PORT = process.env.MONGO_PORT;
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME;
 
+// curry the breadcrumb function
+const captureBreadCrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
+
 // create instance of sheets
 const sheets = new Sheets(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
 // create the mongo db instance
@@ -83,11 +86,7 @@ const createScrape = async () => {
     }
 
     // breadcrumb our sheet ID as a successful action
-    Sentry.captureBreadcrumb({
-        message: 'User selected spreadsheet ID',
-        category: 'scrape',
-        data: { spreadsheetId }
-    })
+    captureBreadcrumb('User selected spreadsheet ID', { spreadsheetId });
 
     try {
         // get information about the spreadsheet
@@ -229,6 +228,8 @@ const createScrape = async () => {
  */
 const runScraper = async () => {
 
+    captureBreadCrumb('Grabbing scrape data from database.');
+
     // pull in the existing scrapes
     await db.connect();
     const data = await db.find('sheets');
@@ -239,16 +240,26 @@ const runScraper = async () => {
         }
     });
 
-    let answers;
-
-    answers = inquirer.prompt([{
+    // ask which scrape to run
+    let answers = inquirer.prompt([{
         type: 'list',
         name: 'scrape',
         message: 'Which scrape do you want to run',
         choices
-    }])
+    }]);
 
-    //await sheets.authenticate();
+    // pull out the variables for the scrape we want
+    const scrape = data[_.findIndex(data, { _id: answers.scrape })];
+
+    try {
+        // auth with sheets
+        await sheets.authenticate();
+    }
+    catch (err) {
+        throw err;
+    }
+
+    
 
 }
 

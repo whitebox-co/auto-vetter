@@ -57,10 +57,12 @@ class Sentry {
 
     /**
      * Wrapper for Raven.captureBreadcrumb
-     * @param   {Object} breadcrumb Breadcrumb object
+     * @param   {String} category   The category for Sentry
+     * @param   {String} message    Message to display
+     * @param   {Object} data       Data object for additional information
      */
-    captureBreadcrumb(breadcrumb) {
-        Raven.captureBreadcrumb(breadcrumb)
+    captureBreadcrumb(category, message, data) {
+        Raven.captureBreadcrumb({ category, message, data });
     }
 
     /**
