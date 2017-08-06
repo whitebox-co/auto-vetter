@@ -9,6 +9,7 @@
   "author": "James Stine",
   "license": "ISC",
   "dependencies": {
+    "alexa": "0.0.1-e",
     "assert": "^1.4.1",
     "asyncawait": "^1.0.6",
     "boxen": "^1.1.0",

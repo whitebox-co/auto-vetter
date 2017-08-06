@@ -22,6 +22,8 @@ const urlparse = require('./util/urlparse');
 const fs = require('fs');
 const MongoDB = require('./app/mongodb');
 const _ = require('lodash');
+const AlexaAPI = require('alexa');
+const asyncWrap = require('./util/asyncWrap');
 
 const FB_REGEX = /^(?:(?:http|https):\/\/)?(?:www.)?facebook.com\/(?:(?:\w)*#!\/)?(?:pages\/)?([\w\-]*)?/;
 
@@ -57,14 +59,54 @@ const mongo = new MongoDB(
     process.env.MONGO_DB_NAME
 );
 
+// create instance of alexa
+const alexa = new AlexaAPI(
+    process.env.AMAZON_ACCESS_KEY,
+    process.env.AMAZON_SECRET_KEY
+)
+
 //
 // NOTE: USER FIELDS PLEASE CHANGE THANKS
-const db = '17o5KZNG-BFB_Booth';
-const sheet_id = '17o5KZNG-BveQSJDu_mMHdmZBebOxmnDA9K0G78ctDg4';
-const sheet_ranges = [ 'FB_Booth!A2:A', 'FB_Booth!M2:M' ];
-const new_ranges = [ 'FB_Booth!P2:P', 'FB_Booth!Q2:Q' ];
+const db = '1q43WF4SNCNatural Expo East';
+const sheet_id = '1q43WF4SNCosLtFLnA5wFbroVp0l9ybgOiK27uvNnaUA';
+const sheet_ranges = [ 'Natural Expo East!A2:A', 'Natural Expo East!I2:I' ];
+const new_ranges = [ 'Natural Expo East!J2:J', 'Natural Expo East!K2:K', 'Natural Expo East!L2:L' ];
 //
 //
+
+program.command('alexa').action(async () => {
+    await mongo.connect();
+    const docs = await mongo.find(db, { url: { $ne: null } });
+
+    let data = [];
+    let batch = [];
+
+    for (let i in docs) {
+        batch.push(docs[i].url);
+        if (i != 0 && i % 4 == 0) {
+            let s = ora('Batching 5 to Alexa...').start();
+            const response = await asyncWrap([ alexa, 'getURLInfo' ], batch, 'Rank');
+            s.succeed('Done!');
+            batch = [];
+            data = [ ...data, ...response['aws:Response'] ];
+            require('./util/sleep')(500);
+        }
+    }
+
+    // one last batch
+    if (batch.length) {
+        const response = await asyncWrap([ alexa, 'getURLInfo' ], batch, 'Rank');
+        data = [ ...data, ...response['aws:Response'] ];
+    }
+
+    for (let i in data) {
+        const alexa_rank = data[i]['aws:UrlInfoResult']['aws:Alexa']['aws:TrafficData']['aws:Rank'];
+        if (typeof alexa_rank === 'string')
+            mongo.update(db, { _id: docs[i]._id }, { $set: { alexa_rank: _.parseInt(alexa_rank) } });
+    }
+
+    Log.info('Done!');
+});
 
 program.command('update').action(async () => {
     await mongo.connect();
@@ -80,6 +122,7 @@ program.command('update').action(async () => {
     // values arrays
     const fburls = [];
     const likes = [];
+    const aranks = [];
 
     // get a last row index to the first in the docs
     let lastRow = docs[0].row;
@@ -91,16 +134,18 @@ program.command('update').action(async () => {
             for (let j = 0; j < (row - lastRow) - 1; j++) {
                 fburls.push('');
                 likes.push('');
+                aranks.push('');
             }
         }
         fburls.push(docs[i].facebook);
         likes.push(docs[i].hasOwnProperty('likes')?docs[i].likes:'');
+        aranks.push(docs[i].alexa_rank);
         lastRow = docs[i].row;
     }
 
     // update the sheets
     const s = ora('Updating Sheets...');
-    await sheets.batchUpdate(sheet_id, ranges, [ fburls, likes ]);
+    await sheets.batchUpdate(sheet_id, ranges, [ fburls, likes, aranks ]);
     s.succeed('Done!');
 
     Log.info('Updated Sheets!');
