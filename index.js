@@ -100,9 +100,15 @@ program.command('alexa').action(async () => {
     }
 
     for (let i in data) {
-        const alexa_rank = data[i]['aws:UrlInfoResult']['aws:Alexa']['aws:TrafficData']['aws:Rank'];
-        if (typeof alexa_rank === 'string')
-            mongo.update(db, { _id: docs[i]._id }, { $set: { alexa_rank: _.parseInt(alexa_rank) } });
+        try {
+            const alexa_rank = data[i]['aws:UrlInfoResult']['aws:Alexa']['aws:TrafficData']['aws:Rank'];
+            if (typeof alexa_rank === 'string')
+                mongo.update(db, { _id: docs[i]._id }, { $set: { alexa_rank: _.parseInt(alexa_rank) } });
+        }
+        catch (ex) {
+            Log.error(ex);
+            console.log(JSON.stringify(data[i]));
+        }
     }
 
     Log.info('Done!');
