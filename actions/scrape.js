@@ -16,7 +16,7 @@ const MONGO_PORT = process.env.MONGO_PORT;
 const MONGO_DB_NAME = process.env.MONGO_DB_NAME;
 
 // curry the breadcrumb function
-const captureBreadCrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
+const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
 
 // create instance of sheets
 const sheets = new Sheets(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
@@ -228,7 +228,7 @@ const createScrape = async () => {
  */
 const runScraper = async () => {
 
-    captureBreadCrumb('Grabbing scrape data from database.');
+    captureBreadcrumb('Grabbing scrape data from database.');
 
     // pull in the existing scrapes
     await db.connect();
@@ -259,7 +259,7 @@ const runScraper = async () => {
         throw err;
     }
 
-    
+
 
 }
 

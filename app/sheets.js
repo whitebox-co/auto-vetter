@@ -16,7 +16,7 @@ const _ = require('lodash');
 const Sentry = require('./sentry');
 
 // curry the breadcrumb function
-const captureBreadCrumb = _.curry(Sentry.captureBreadcrumb)('sheets');
+const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('sheets');
 
 const SCOPES = [ 'https://www.googleapis.com/auth/spreadsheets' ];
 const TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH || process.env.USERPROFILE) + '/.credentials/';
