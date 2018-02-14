@@ -24,14 +24,18 @@ const MongoDB = require('./app/mongodb');
 const _ = require('lodash');
 const AlexaAPI = require('alexa');
 const asyncWrap = require('./util/asyncWrap');
+const boxen = require('boxen');
+const inquirer = require('inquirer');
 
 const FB_REGEX = /^(?:(?:http|https):\/\/)?(?:www.)?facebook.com\/(?:(?:\w)*#!\/)?(?:pages\/)?([\w\-]*)?/;
 
+const { create_scrape } = require('./actions/scrape');
+
 // set the program version
-program.version('0.1.0');
+//program.version('0.1.0');
 
 // default action
-program.action(() => program.help());
+//program.action(() => program.help());
 
 // create instance of sheets
 const sheets = new Sheets(
@@ -66,15 +70,76 @@ const alexa = new AlexaAPI(
 )
 
 //
-// NOTE: USER FIELDS PLEASE CHANGE THANKS
-const db = '1q43WF4SNCNatural Expo East';
-const sheet_id = '1q43WF4SNCosLtFLnA5wFbroVp0l9ybgOiK27uvNnaUA';
-const sheet_ranges = [ 'Natural Expo East!A2:A', 'Natural Expo East!I2:I' ];
-const new_ranges = [ 'Natural Expo East!J2:J', 'Natural Expo East!K2:K', 'Natural Expo East!L2:L' ];
+let db = '';
+let sheet_id = '';
+let sheet_ranges = [];
+let new_ranges = [];
 //
 //
 
-program.command('alexa').action(async () => {
+// log the header
+console.log(boxen(
+    chalk.black('Whitebox Auto Vetter'),
+    { padding: 1, backgroundColor: 'white' }
+));
+
+// main async loop
+(async () => {
+
+    // return data back
+    const data = await create_scrape();
+    // store sheet id
+    sheet_id = data['spreadsheetId'];
+    // store the db name
+    db = sheet_id.slice(0, 10) + data['sheetName'];
+    // assumes data starts at row 2
+    sheet_ranges = [
+        `${data['sheetName']}!A2:A`,
+        `${data['sheetName']}!${data['urlColumn']}2:${data['urlColumn']}`
+    ];
+
+    // query for columns
+    const rs = await inquirer.prompt([
+        {
+            type: 'text',
+            name: 'fburl',
+            message: 'Enter the letter column for Facebook URLs'
+        },
+        {
+            type: 'text',
+            name: 'likes',
+            message: 'Enter the letter column for Facebook Likes'
+        },
+        {
+            type: 'text',
+            name: 'alexa',
+            message: 'Enter the letter column for Alexa Rank'
+        }
+    ]);
+
+    // set the new ranges
+    new_ranges = [
+        `${data['sheetName']}!${rs['fburl']}2:${rs['fburl']}`,
+        `${data['sheetName']}!${rs['likes']}2:${rs['likes']}`,
+        `${data['sheetName']}!${rs['alexa']}2:${rs['alexa']}`
+    ];
+
+    // run the commands
+    await facebookFn();
+    await likesFn();
+    await alexaFn();
+    await updateFn();
+
+    Log.info("Scrape completed!");
+
+})();
+
+
+/*program.command('alexa').action(*/
+const alexaFn = async () => {
+
+    Log.info("Fetching Alexa Page Rank...");
+
     await mongo.connect();
     const docs = await mongo.find(db, { url: { $ne: null } });
 
@@ -93,12 +158,6 @@ program.command('alexa').action(async () => {
         }
     }
 
-    // one last batch
-    if (batch.length) {
-        const response = await asyncWrap([ alexa, 'getURLInfo' ], batch, 'Rank');
-        data = [ ...data, ...response['aws:Response'] ];
-    }
-
     for (let i in data) {
         try {
             const alexa_rank = data[i]['aws:UrlInfoResult']['aws:Alexa']['aws:TrafficData']['aws:Rank'];
@@ -112,9 +171,16 @@ program.command('alexa').action(async () => {
     }
 
     Log.info('Done!');
-});
 
-program.command('update').action(async () => {
+    // close mongo connection
+    mongo.close();
+}
+
+/*program.command('update').action(*/
+const updateFn = async () => {
+
+    Log.info("Updating spreadsheet...");
+
     await mongo.connect();
     await sheets.authenticate();
 
@@ -155,9 +221,12 @@ program.command('update').action(async () => {
     s.succeed('Done!');
 
     Log.info('Updated Sheets!');
-});
 
-program.command('prune').action(async () => {
+    // close mongo connection
+    mongo.close();
+}
+
+/*program.command('prune').action(async () => {
     await mongo.connect();
     const response = await mongo.updateMany(
         db,
@@ -165,9 +234,13 @@ program.command('prune').action(async () => {
         { $unset: { url: '' } }
     );
     console.log(response.result);
-});
+});*/
 
-program.command('likes').action(async () => {
+/*program.command('likes').action(*/
+const likesFn = async () => {
+
+    Log.info("Fetching Likes from Facebook URLs...");
+
     await mongo.connect();
     await fb.authenticate();
 
@@ -205,21 +278,27 @@ program.command('likes').action(async () => {
             //Log.error(data[i].error);
             continue;
         }
-        Log.info(data[i].fan_count);
         mongo.update(db, { _id: docs[i]._id }, { $set: { likes: data[i].fan_count } });
     }
 
     Log.info('Done!');
-});
 
-program.command('killdupe').action(async () => {
+    // close mongo connection
+    mongo.close();
+}
+
+/*program.command('killdupe').action(*/
+const killdupeFn = async () => {
     await mongo.connect();
     // NOTE: user input
     const response = await mongo.removeDuplicates(db, 'company');
     console.log(response.result);
-});
+}
 
-program.command('facebook').action(async () => {
+/*program.command('facebook').action(*/
+const facebookFn = async () => {
+
+    Log.info("Scraping for Facebook URLs...");
 
     let s = ora('Getting Sheet data...');
 
@@ -296,7 +375,7 @@ program.command('facebook').action(async () => {
                 }
             });
             s.succeed(`Done! (${chalk.dim(url)}):${i}`);
-            const fb = await facebook(html);
+            const fb = await facebookParse(html);
             await mongo.insert(db, _.merge(minsert, { facebook: fb }));
         }
         catch (ex) {
@@ -306,20 +385,22 @@ program.command('facebook').action(async () => {
         }
     }
 
-    Log.info('All done!');
+    Log.info('Done!');
 
-});
+    // close mongo connection
+    mongo.close();
+}
 
 // parse the input and run the commander program
-program.parse(process.argv);
+// program.parse(process.argv);
 
 // show help if we didn't specify any valid input
-if (!process.argv.slice(2).length)
-    program.help();
+//if (!process.argv.slice(2).length)
+//    program.help();
 
 // routines
 
-async function facebook(html) {
+async function facebookParse(html) {
     let fburl = null;
 
     // get instance of cheerio for this html
