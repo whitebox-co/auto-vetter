@@ -19,21 +19,13 @@ console.log(boxen(
         type: 'list',
         name: 'launch_action',
         message: 'What do you want to do?',
-        choices: getActions()/*[
-            'New scrape',
-            'Resume scrape',
-            new inquirer.Separator(),
-            'Scrape Facebook Likes',
-            'Scrape Amazon',
-            new inquirer.Separator(),
-            'Re-authenticate with Google'
-        ]*/
+        choices: getActions()
     });
 
     // wrap context of the action in Sentry to catch exceptions
-    Sentry.asyncContext(async () => {
+    await Sentry.asyncContext(async () => {
         // run the action associated with the answer chosen
         await runAction(answers.launch_action);
     });
-
+    
 })();
