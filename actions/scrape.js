@@ -215,11 +215,15 @@ const createScrape = async () => {
     }
 
     // insert information about the sheet for the scrape job
-    await db.insert('sheets', { name: sheetTitle, spreadsheetId, sheetName });
+    // await db.insert('sheets', { name: sheetTitle, spreadsheetId, sheetName, urlColumn: columnLetter });
 
     // log which name we're using for the collection
     Log.info(`The MongoDB collection name is ${chalk.blue.bold(collectionName)}`);
 
+    // close mongodb connection
+    db.close();
+
+    return { name: sheetTitle, spreadsheetId, sheetName, urlColumn: columnLetter };
 }
 
 /**
@@ -241,7 +245,7 @@ const runScraper = async () => {
     });
 
     // ask which scrape to run
-    let answers = inquirer.prompt([{
+    let answers = await inquirer.prompt([{
         type: 'list',
         name: 'scrape',
         message: 'Which scrape do you want to run',
@@ -254,13 +258,20 @@ const runScraper = async () => {
     try {
         // auth with sheets
         await sheets.authenticate();
+
     }
     catch (err) {
         throw err;
     }
 
+    // scan for FB
 
+    // scrape likes
 
+    // get alexa page rank
+
+    // close mongodb connection
+    db.close();
 }
 
 module.exports = {
