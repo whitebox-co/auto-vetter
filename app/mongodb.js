@@ -21,6 +21,10 @@ class MongoDB {
         }
     }
 
+    close() {
+        this.client.close();
+    }
+
     async getCollection(name) {
         try {
             return await this.client.collection(name);
