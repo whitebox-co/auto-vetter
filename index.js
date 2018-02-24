@@ -27,6 +27,7 @@ const asyncWrap = require('./util/asyncWrap');
 const boxen = require('boxen');
 const inquirer = require('inquirer');
 const Sentry = require('./app/sentry');
+const ProgressBar = require('progress');
 
 // curry the breadcrumb function
 const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
@@ -34,12 +35,6 @@ const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
 const FB_REGEX = /^(?:(?:http|https):\/\/)?(?:www.)?facebook.com\/(?:(?:\w)*#!\/)?(?:pages\/)?([\w\-]*)?/;
 
 const { create_scrape } = require('./actions/scrape');
-
-// set the program version
-//program.version('0.1.0');
-
-// default action
-//program.action(() => program.help());
 
 // create instance of sheets
 const sheets = new Sheets(
@@ -90,28 +85,40 @@ console.log(boxen(
 const alexaFn = async () => {
 
 	Log.info("Fetching Alexa Page Rank...");
+	captureBreadcrumb('Fetching Alexa Page Ranks');
 
 	await mongo.connect();
 	const docs = await mongo.find(db, { url: { $ne: null } });
 
+	// start a progress bar
+	const bar = new ProgressBar(chalk.bold.green('Progress') + ' [:bar] (:current/:total)', {
+		total: docs.length,
+		incomplete: ' ',
+		complete: chalk.bgGreen(' ')
+	});
+
 	// increase 5 each time for the batch
 	for (let i = 0; i < docs.length; i += 5) {
 		// form the urls array
-		
 		const urls = [];
+		// try to get 5 at a time or cap out
 		for (let j = 0; j < 5; j++) {
-			if (docs[i + j] != null)
-				urls.push(docs[i + j].url);
+			if (docs[i + j] != null) {
+				let url = docs[i + j].url;
+				url = url.slice(0, url.indexOf('?'));
+				urls.push(url);
+			}
 			else
 				break;
 		}
+		captureBreadcrumb('Batching URLs', { urls });
 
-		let s = ora(`Batching to Alexa ...`).start();
 		try {
 			const response = await asyncWrap([ alexa, 'getURLInfo' ], urls, 'Rank');
-			s.succeed('Done!');
-
 			const data = response['aws:Response'];
+
+			// tick by the amount of rows from data
+			bar.tick(data.length);
 
 			// map the array into the ranks
 			const ranks = _.map(data, value => {
@@ -124,16 +131,20 @@ const alexaFn = async () => {
 				}
 			});
 
-			// loop over our ranks and update 
+			captureBreadcrumb('Received ranks!');
+
+			// loop over our ranks and update
 			for (let j = 0; j < ranks.length; j++)
 				if (typeof ranks[j] === 'string')
 					await mongo.update(db, { _id: docs[i + j]._id }, { $set: { alexa_rank: _.parseInt(ranks[j]) } });
 
 		}
 		catch (ex) {
-			Log.error(ex);
-			s.fail('Oh no! (' + i + ' - ' + i + 5 +')');
-			for (let j = 0; j < 5; j++)
+			// capture the exception
+			Sentry.captureException(ex);
+
+			// set on all of the batched URLs that it failed for this batch
+			for (let j = 0; j < urls.length; j++)
 				mongo.update(db, { _id: docs[i + j] }, { $set: { error: 'Alexa Batch failed!' } });
 		}
 
@@ -223,15 +234,6 @@ const updateFn = async () => {
 	mongo.close();
 }
 
-/*program.command('prune').action(async () => {
-	await mongo.connect();
-	const response = await mongo.updateMany(
-		db,
-		{ error: 'Not a valid URL' },
-		{ $unset: { url: '' } }
-	);
-	console.log(response.result);
-});*/
 
 /*program.command('likes').action(*/
 const likesFn = async () => {
