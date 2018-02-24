@@ -70,6 +70,7 @@ const alexa = new AlexaAPI(
 //
 let db = '';
 let sheet_id = '';
+let sheet_name = '';
 let sheet_ranges = [];
 let new_ranges = [];
 //
@@ -94,7 +95,8 @@ const alexaFn = async () => {
 	const bar = new ProgressBar(chalk.bold.green('Progress') + ' [:bar] (:current/:total)', {
 		total: docs.length,
 		incomplete: ' ',
-		complete: chalk.bgGreen(' ')
+		complete: chalk.bgGreen(' '),
+		clear: true
 	});
 
 	// increase 5 each time for the batch
@@ -153,6 +155,8 @@ const alexaFn = async () => {
 	}
 
 	Log.info('Done!');
+	Log.warn(`${chalk.bold.yellow('NOTE:')} If the progress bar is still visible, press a key to update the output stream.`);
+	bar.terminate();
 
 	// close mongo connection
 	mongo.close();
@@ -161,30 +165,38 @@ const alexaFn = async () => {
 /*program.command('update').action(*/
 const updateFn = async () => {
 
+	// ensure its not empty
+	const validate = input => {
+		return input.length;
+	}
+
 	// query for columns
 	const rs = await inquirer.prompt([
 		{
 			type: 'text',
 			name: 'fburl',
-			message: 'Enter the letter column for Facebook URLs'
+			message: 'Enter the letter column for Facebook URLs',
+			validate
 		},
 		{
 			type: 'text',
 			name: 'likes',
-			message: 'Enter the letter column for Facebook Likes'
+			message: 'Enter the letter column for Facebook Likes',
+			validate
 		},
 		{
 			type: 'text',
 			name: 'alexa',
-			message: 'Enter the letter column for Alexa Rank'
+			message: 'Enter the letter column for Alexa Rank',
+			validate
 		}
 	]);
 
 	// set the new ranges
 	new_ranges = [
-		`${data['sheetName']}!${rs['fburl']}2:${rs['fburl']}`,
-		`${data['sheetName']}!${rs['likes']}2:${rs['likes']}`,
-		`${data['sheetName']}!${rs['alexa']}2:${rs['alexa']}`
+		`${sheet_name}!${rs['fburl']}2:${rs['fburl']}`,
+		`${sheet_name}!${rs['likes']}2:${rs['likes']}`,
+		`${sheet_name}!${rs['alexa']}2:${rs['alexa']}`
 	];
 
 	Log.info("Updating spreadsheet...");
@@ -421,12 +433,13 @@ const numb = n => {
 	// process the data
 	// store sheet id
 	sheet_id = data['spreadsheetId'];
+	sheet_name = data['sheetName'];
 	// store the db name
-	db = sheet_id.slice(0, 10) + data['sheetName'];
+	db = sheet_id.slice(0, 10) + sheet_name;
 	// assumes data starts at row 2
 	sheet_ranges = [
-		`${data['sheetName']}!A2:A`,
-		`${data['sheetName']}!${data['urlColumn']}2:${data['urlColumn']}`
+		`${sheet_name}!A2:A`,
+		`${sheet_name}!${data['urlColumn']}2:${data['urlColumn']}`
 	];
 
 	// the scrape run options
@@ -440,15 +453,17 @@ const numb = n => {
 	]);
 
    // run the commands
-	if (runOpts['choices'].includes('Facebook'))
-		Sentry.asyncContext(async () => await facebookFn());
-	if (runOpts['choices'].includes('Facebook Likes'))
-		Sentry.asyncContext(async () => await likesFn());
-	if (runOpts['choices'].includes('Alexa'))
-		Sentry.asyncContext(async () => await alexaFn());
-	if (runOpts['choices'].includes('Update Spreadsheet'))
-		Sentry.asyncContext(async () => await updateFn());
-
+   await Sentry.asyncContext(async () => {
+		if (runOpts['choices'].includes('Facebook'))
+			await facebookFn();
+		if (runOpts['choices'].includes('Facebook Likes'))
+			await likesFn();
+		if (runOpts['choices'].includes('Alexa'))
+			await alexaFn();
+		if (runOpts['choices'].includes('Update Spreadsheet'))
+			await updateFn();
+	});
+	   
 	Log.info("Scrape completed!");
 
 })();
