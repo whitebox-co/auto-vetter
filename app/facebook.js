@@ -9,7 +9,7 @@ const request = require('request-promise');
 const path = require('path');
 const querystring = require('querystring');
 
-const PREFIX = 'https://graph.facebook.com/';
+const PREFIX = 'https://graph.facebook.com';
 
 class Facebook {
 
@@ -26,6 +26,7 @@ class Facebook {
 
         // get token from Facebook
         const token = await request(`${PREFIX}/oauth/access_token?client_id=${this.client_id}&client_secret=${this.client_secret}&grant_type=client_credentials`);
+
         // store token
         this.access_token = JSON.parse(token).access_token;
     }
