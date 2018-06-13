@@ -271,6 +271,9 @@ const likesFn = async () => {
 		if (i != 0 && i % 49 == 0) {
 			let s = ora('Batching 50 to FB Graph...');
 			const response = await fb.batch(batch);
+			if (response.error && response.error.code == 4)
+				throw new Error('Facebook Graph API Rate Limit Reached!');
+			// TODO: https://developers.facebook.com/docs/graph-api/using-graph-api/error-handling
 			s.succeed('Done!');
 			batch = [];
 			data = [ ...data, ...response ];
