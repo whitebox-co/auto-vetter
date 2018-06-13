@@ -167,7 +167,7 @@ const updateFn = async () => {
 
 	// ensure its not empty
 	const validate = input => {
-		return input.length;
+		return input.length > 0;
 	}
 
 	// query for columns
@@ -289,7 +289,7 @@ const likesFn = async () => {
 	// loop over all the data
 	for (let i in data) {
 		if (data[i].error) {
-			//Log.error(data[i].error);
+			Log.error(data[i].error);
 			continue;
 		}
 		mongo.update(db, { _id: docs[i]._id }, { $set: { likes: data[i].fan_count } });
