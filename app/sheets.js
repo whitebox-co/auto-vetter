@@ -8,7 +8,6 @@
 const fs = require('fs');
 const google = require('googleapis');
 const sheets = google.sheets('v4');
-const googleAuth = require('google-auth-library');
 const authServer = require('../util/authServer');
 const Log = require('../util/log');
 const asyncWrap = require('../util/asyncWrap');
@@ -40,11 +39,8 @@ class Sheets {
      * @param {String} token An existing token
      */
     async authenticate() {
-        // create instance of Google Auth
-        const auth = new googleAuth();
-
         // create a new oauth client
-        this.oauth_client = new auth.OAuth2(
+        this.oauth_client = new google.auth.OAuth2(
             this.client_id,
             this.client_secret,
             `http://localhost:${process.env.WEB_PORT}/callback`
@@ -63,7 +59,7 @@ class Sheets {
         // if not then grab a new one from Google
         catch (e) {
             // start the oauth process
-            token = await this.getAccessToken(this.oauth_client);
+            token = await this.getAccessToken();
         }
 
         // set the token in the client
@@ -72,12 +68,14 @@ class Sheets {
 
     /**
      * Get a new access token from Google
-     * @param   {googleAuth.auth.OAuth2} oauth_client
      * @returns {String}
      */
-    async getAccessToken(oauth_client) {
+    async getAccessToken() {
+        if (!this.oauth_client)
+            throw new Error("authenticate() should be called before getAccessToken()");
+
         // generate an auth url
-        const auth_url = oauth_client.generateAuthUrl({
+        const auth_url = this.oauth_client.generateAuthUrl({
             access_type: 'offline',
             scope: SCOPES
         });
@@ -87,7 +85,7 @@ class Sheets {
         // get the creds from the URL
         const creds = await authServer.auth_me(auth_url);
         // get the access token from Google
-        const token = await asyncWrap([ oauth_client, 'getToken' ], creds.code);
+        const token = await asyncWrap([ this.oauth_client, 'getToken' ], creds.code);
 
         // store the token on the machine
         this.storeToken(token);
