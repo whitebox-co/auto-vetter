@@ -16,7 +16,16 @@ const shutdownable = require('http-shutdown');
 // create variable for the server
 let server;
 
-// main oauth handler
+/**
+ * @typedef {Object} Creds
+ * @property {String} code Authentication code from URL
+ */
+
+/**
+ * Used to authenticate user to Google APIs
+ * @param {String} url 
+ * @returns {Creds}
+ */
 const auth_me = async url => {
     // open the url
     opn(url);
@@ -29,7 +38,10 @@ const auth_me = async url => {
     return creds;
 }
 
-// start listening
+/**
+ * Spawn the web server
+ * @returns {Promise<Creds>} Credentials from the URL's GET variables
+ */
 const spawn = () => {
     return new Promise((resolve, reject) => {
         // listen for the server and wrap with http shutdown to kill later
@@ -45,7 +57,9 @@ const spawn = () => {
     });
 }
 
-// kill the express server
+/**
+ * Kills the web server
+ */
 const kill = () => {
     server.shutdown();
 };
