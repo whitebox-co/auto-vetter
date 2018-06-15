@@ -47,7 +47,7 @@ class Sheets {
         this.oauth_client = new auth.OAuth2(
             this.client_id,
             this.client_secret,
-            'http://localhost:8080/callback'
+            `http://localhost:${process.env.WEB_PORT}/callback`
         );
 
         captureBreadcrumb('Logging in to Google Sheets.');

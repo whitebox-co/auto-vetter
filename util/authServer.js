@@ -33,7 +33,7 @@ const auth_me = async url => {
 const spawn = () => {
     return new Promise((resolve, reject) => {
         // listen for the server and wrap with http shutdown to kill later
-        server = shutdownable(app.listen(8080));
+        server = shutdownable(app.listen(process.env.WEB_PORT));
 
         // create the catch for the OAuth callback
         app.get('/callback', (req, res) => {
