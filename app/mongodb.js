@@ -5,12 +5,21 @@ const Sentry = require('./sentry');
 
 class MongoDB {
 
+    /**
+     * Create instance of MongoDB class
+     * @param {String} host Host address
+     * @param {Number} port Port number
+     * @param {String} db Database name
+     */
     constructor(host, port, db) {
         this.host = host;
         this.port = port;
         this.db = db;
     }
 
+    /**
+     * Connect to the mongo database
+     */
     async connect() {
         try {
             const url = `mongodb://${this.host}:${this.port}/${this.db}`;
@@ -52,6 +61,11 @@ class MongoDB {
         }
     }
 
+    /**
+     * Does a collection name exist
+     * @param {String} name Name of the collection
+     * @returns {Boolean} True if collection exist
+     */
     async doesCollectionExist(name) {
         try {
             const data = await this.client.listCollections().toArray();
@@ -62,6 +76,12 @@ class MongoDB {
         }
     }
 
+    /**
+     * Find documents on a collection with a filter
+     * @param {Object} collection 
+     * @param {Object} filter 
+     * @returns {Array[Object]}
+     */
     async find(collection, filter = {}) {
         if (!this.client)
             return;
@@ -75,6 +95,11 @@ class MongoDB {
         }
     }
 
+    /**
+     * Insert data into a collection
+     * @param {Object} collection 
+     * @param {Object} data 
+     */
     async insert(collection, data) {
         if (!this.client)
             return;
@@ -89,38 +114,11 @@ class MongoDB {
         }
     }
 
-    async aggregate(collection, field) {
-        if (!this.client)
-            return;
-        const col = this.client.collection(collection);
-        try {
-            const _id = {};
-            _id[field] = '$'+field;
-            return await col.aggregate([
-                {
-                    $group: {
-                        _id,
-                        uniqueIds: { $addToSet: '$_id' },
-                        count: { $sum: 1 }
-                    }
-                },
-                {
-                    $match: {
-                        count: { $gte: 2 }
-                    }
-                },
-                {
-                    $sort: {
-                        count: -1
-                    }
-                }
-            ]).toArray();
-        }
-        catch (ex) {
-            Sentry.captureException(ex);
-        }
-    }
-
+    /**
+     * Remove duplicates based on a string
+     * @param {Object} collection 
+     * @param {String} field 
+     */
     async removeDuplicates(collection, field) {
         if (!this.client)
             return;
@@ -136,18 +134,13 @@ class MongoDB {
                 {
                     $group: {
                         _id,
-                        duplicates: { $addToSet: '$_id' },
+                        dups: { $addToSet: '$_id' },
                         count: { $sum: 1 }
                     }
                 },
                 {
                     $match: {
-                        count: { $gte: 2 }
-                    }
-                },
-                {
-                    $sort: {
-                        count: -1
+                        count: { $gt: 1 }
                     }
                 }
             ]);
@@ -156,12 +149,7 @@ class MongoDB {
                 // skip the first element
                 doc.duplicates.shift();
                 // for each delete them
-                doc.duplicates.forEach(dupId => {
-                    console.log(dupId);
-                    dups.push(dupId)
-                });
-
-                return col.remove({ _id: { $in: dups } });
+                col.remove({ _id: { $in: doc.dups }});
             });
         }
         catch (ex) {
@@ -169,6 +157,12 @@ class MongoDB {
         }
     }
 
+    /**
+     * Update a document on a collection based on a filter
+     * @param {Object} collection 
+     * @param {Object} filter 
+     * @param {Object} data 
+     */
     async update(collection, filter, data) {
         if (!this.client)
             return;
@@ -183,6 +177,12 @@ class MongoDB {
         }
     }
 
+    /**
+     * Update many documents on a collection based on a filter
+     * @param {Object} collection 
+     * @param {Object} filter 
+     * @param {Object} data 
+     */
     async updateMany(collection, filter, data) {
         if (!this.client)
             return;
@@ -190,7 +190,6 @@ class MongoDB {
         const col = this.client.collection(collection);
         // update data
         try {
-            //return await asyncWrap([ col, 'updateMany' ], filter, data);
             return await col.updateMany(filter, data);
         }
         catch (ex) {
@@ -198,6 +197,9 @@ class MongoDB {
         }
     }
 
+    /**
+     * Close the connection
+     */
     close() {
         this.client && this.client.close();
     }
