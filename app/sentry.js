@@ -53,6 +53,8 @@ class Sentry {
         printError(err);
         // capture the exeption with raven
         Raven.captureException(err);
+        // kill the process
+        process.exit(1);
     }
 
     /**
