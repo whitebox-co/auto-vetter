@@ -264,12 +264,6 @@ const runScraper = async () => {
         throw err;
     }
 
-    // scan for FB
-
-    // scrape likes
-
-    // get alexa page rank
-
     // close mongodb connection
     db.close();
 }

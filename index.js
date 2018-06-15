@@ -82,7 +82,6 @@ console.log(boxen(
 	{ padding: 1, backgroundColor: 'white' }
 ));
 
-/*program.command('alexa').action(*/
 const alexaFn = async () => {
 
 	Log.info("Fetching Alexa Page Rank...");
@@ -162,7 +161,6 @@ const alexaFn = async () => {
 	mongo.close();
 }
 
-/*program.command('update').action(*/
 const updateFn = async () => {
 
 	// ensure its not empty
@@ -246,8 +244,6 @@ const updateFn = async () => {
 	mongo.close();
 }
 
-
-/*program.command('likes').action(*/
 const likesFn = async () => {
 
 	Log.info("Fetching Likes from Facebook URLs...");
@@ -301,7 +297,6 @@ const likesFn = async () => {
 	mongo.close();
 }
 
-/*program.command('killdupe').action(*/
 const killdupeFn = async () => {
 	await mongo.connect();
 	// NOTE: user input
@@ -309,7 +304,6 @@ const killdupeFn = async () => {
 	console.log(response.result);
 }
 
-/*program.command('facebook').action(*/
 const facebookFn = async () => {
 
 	Log.info("Scraping for Facebook URLs...");
