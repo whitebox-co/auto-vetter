@@ -100,11 +100,8 @@ const alexaFn = async () => {
 		const urls = [];
 		// try to get 5 at a time or cap out
 		for (let j = 0; j < 5; j++) {
-			if (docs[i + j] != null) {
-				let url = docs[i + j].url;
-				url = url.slice(0, url.indexOf('?'));
-				urls.push(url);
-			}
+			if (docs[i + j] != null)
+				urls.push(docs[i + j].url);
 			else
 				break;
 		}
@@ -119,7 +116,11 @@ const alexaFn = async () => {
 				});
 			});
 
-			const data = response['aws:Response'];
+			let data = response['aws:Response'];
+
+			// set as array for single batches
+			if (!_.isArray(data))
+				data = [ data ];
 
 			// tick by the amount of rows from data
 			bar.tick(data.length);
