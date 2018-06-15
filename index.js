@@ -23,7 +23,6 @@ const fs = require('fs');
 const MongoDB = require('./app/mongodb');
 const _ = require('lodash');
 const AlexaAPI = require('alexa');
-const asyncWrap = require('./util/asyncWrap');
 const boxen = require('boxen');
 const inquirer = require('inquirer');
 const Sentry = require('./app/sentry');
@@ -115,7 +114,14 @@ const alexaFn = async () => {
 		captureBreadcrumb('Batching URLs', { urls });
 
 		try {
-			const response = await asyncWrap([ alexa, 'getURLInfo' ], urls, 'Rank');
+			const response = await new Promise((resolve, reject) => {
+				alexa.getURLInfo(urls, "Rank", (err, results) => {
+					if (err)
+						return reject(err);
+					return resolve(results);
+				});
+			});
+
 			const data = response['aws:Response'];
 
 			// tick by the amount of rows from data

@@ -1,5 +1,4 @@
 const MongoClient = require('mongodb').MongoClient;
-const asyncWrap = require('../util/asyncWrap');
 const _ = require('lodash');
 const Sentry = require('./sentry');
 
