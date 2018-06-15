@@ -66,14 +66,11 @@ const alexa = new AlexaAPI(
 	process.env.AMAZON_SECRET_KEY
 );
 
-//
 let db = '';
 let sheet_id = '';
 let sheet_name = '';
 let sheet_ranges = [];
 let new_ranges = [];
-//
-//
 
 // log the header
 console.log(boxen(

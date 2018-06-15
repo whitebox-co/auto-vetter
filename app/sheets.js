@@ -6,11 +6,10 @@
  */
 
 const fs = require('fs');
-const google = require('googleapis');
+const { google } = require('googleapis');
 const sheets = google.sheets('v4');
 const authServer = require('../util/authServer');
 const Log = require('../util/log');
-const asyncWrap = require('../util/asyncWrap');
 const _ = require('lodash');
 const Sentry = require('./sentry');
 
@@ -31,7 +30,6 @@ class Sheets {
     constructor(client_id, client_secret) {
         this.client_id = client_id;
         this.client_secret = client_secret;
-        this.oauth_client = null;
     }
 
     /**
@@ -85,7 +83,7 @@ class Sheets {
         // get the creds from the URL
         const creds = await authServer.auth_me(auth_url);
         // get the access token from Google
-        const token = await asyncWrap([ this.oauth_client, 'getToken' ], creds.code);
+        const token = (await this.oauth_client.getToken(creds.code)).tokens;
 
         // store the token on the machine
         this.storeToken(token);
@@ -111,14 +109,8 @@ class Sheets {
      * @returns {Promise}
      */
     async getSpreadsheetInfo(spreadsheetId) {
-
         captureBreadcrumb('Getting spreadsheet info', { spreadsheetId });
-
-        return await asyncWrap(
-            [ sheets.spreadsheets, 'get' ],
-            { auth: this.oauth_client, spreadsheetId }
-        );
-
+        return (await sheets.spreadsheets.get({ auth: this.oauth_client, spreadsheetId })).data;
     }
 
     /**
@@ -128,7 +120,6 @@ class Sheets {
      * @returns {Promise}
      */
     async get(spreadsheetId, range, majorDimension = 'COLUMNS') {
-
         captureBreadcrumb(
             'Getting spreadsheet range',
             {
@@ -138,10 +129,14 @@ class Sheets {
             }
         );
 
-        return await asyncWrap(
-            [ sheets.spreadsheets.values, 'get' ],
-            { auth: this.oauth_client, spreadsheetId, range, majorDimension }
-        );
+        return (
+            await sheets.spreadsheets.values.get({ 
+                auth: this.oauth_client, 
+                spreadsheetId, 
+                range, 
+                majorDimension
+            })
+        ).data;
     }
 
     /**
@@ -151,7 +146,6 @@ class Sheets {
      * @returns {Promise}
      */
     async batchGet(spreadsheetId, ranges, majorDimension = 'COLUMNS') {
-
         captureBreadcrumb(
             'Requesting batch get from spreadsheet ID',
             {
@@ -161,10 +155,14 @@ class Sheets {
             }
         );
 
-        return await asyncWrap(
-            [ sheets.spreadsheets.values, 'batchGet' ],
-            { auth: this.oauth_client, spreadsheetId, ranges, majorDimension }
-        );
+        return (
+            await sheets.spreadsheets.values.batchGet({
+                auth: this.oauth_client,
+                spreadsheetId,
+                ranges,
+                majorDimension
+            })
+        ).data;
     }
 
     /**
@@ -175,7 +173,6 @@ class Sheets {
      * @returns {Promise}
      */
     async update(spreadsheetId, range, values) {
-
         captureBreadcrumb(
             'Updating spreadsheet data',
             {
@@ -185,9 +182,8 @@ class Sheets {
             }
         );
 
-        return await asyncWrap(
-            [ sheets.spreadsheets.values, 'update' ],
-            {
+        return (
+            await sheets.spreadsheets.values.update({
                 auth: this.oauth_client,
                 spreadsheetId,
                 range,
@@ -196,8 +192,8 @@ class Sheets {
                     values: [ values ],
                     majorDimension: 'COLUMNS'
                 }
-            }
-        );
+            })
+        ).data;
     }
 
     /**
@@ -234,19 +230,18 @@ class Sheets {
                 values,
                 data
             }
-        );
+		);
 
-        return await asyncWrap(
-            [ sheets.spreadsheets.values, 'batchUpdate' ],
-            {
-                auth: this.oauth_client,
+		return (
+			await sheets.spreadsheets.values.batchUpdate({
+				auth: this.oauth_client,
                 spreadsheetId,
                 resource: {
                     valueInputOption: 'USER_ENTERED',
                     data
                 }
-            }
-        );
+			})
+		).data;
     }
 
     /**
