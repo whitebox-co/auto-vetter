@@ -31,7 +31,7 @@ const ProgressBar = require('progress');
 // curry the breadcrumb function
 const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
 
-const FB_REGEX = /^(?:(?:http|https):\/\/)?(?:www.)?facebook.com\/(?:(?:\w)*#!\/)?(?:pages\/)?([\w\-]*)?/;
+const FB_REGEX = /^((?:http|https):\/\/)?(?:www.)?facebook.com\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[?\w\-]*\/)?(?:profile.php\?id=(?=\d.*))?([\w\.-]*)?/;
 
 const { create_scrape } = require('./actions/scrape');
 
@@ -420,10 +420,6 @@ async function facebookParse(html) {
 	});
 
 	return fburl;
-}
-
-const numb = n => {
-	return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 // main async loop
