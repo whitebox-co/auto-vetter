@@ -334,7 +334,8 @@ async function facebookParse(html) {
 }
 
 // main async loop
-(async () => {
+Sentry.asyncContext(async () => {
+
 	// return data back
 	const data = await runAction('create_scrape');
 
@@ -360,17 +361,18 @@ async function facebookParse(html) {
 	]);
 
    // run the commands
-   await Sentry.asyncContext(async () => {
-		if (runOpts['choices'].includes('Facebook'))
-			await runAction('getFBUrls', { sheet_id, sheet_ranges, mongo, sheets });
-		if (runOpts['choices'].includes('Facebook Likes'))
-			await likesFn();
-		if (runOpts['choices'].includes('Alexa'))
-			await alexaFn();
-		if (runOpts['choices'].includes('Update Spreadsheet'))
-			await updateFn();
-	});
+	if (runOpts['choices'].includes('Facebook'))
+		await runAction('getFBUrls', state);
+
+	if (runOpts['choices'].includes('Facebook Likes'))
+		await likesFn();
+
+	if (runOpts['choices'].includes('Alexa'))
+		await alexaFn();
+
+	if (runOpts['choices'].includes('Update Spreadsheet'))
+		await runAction('updateSheet', state);
 	   
 	Log.info("Scrape completed!");
 
-})();
+});
