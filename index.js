@@ -15,7 +15,6 @@ const cheerio = require('cheerio');
 const program = require('commander');
 const Log = require('./util/log');
 const Sheets = require('./app/sheets');
-const Facebook = require('./app/facebook');
 const sleep = require('./util/sleep');
 const urlparse = require('./util/urlparse');
 const fs = require('fs');
@@ -36,12 +35,6 @@ const { runAction } = require('./actions');
 const sheets = new Sheets(
 	process.env.GOOGLE_CLIENT_ID,
 	process.env.GOOGLE_CLIENT_SECRET
-);
-
-// create instance of Facebook
-const fb = new Facebook(
-	process.env.FACEBOOK_CLIENT_ID,
-	process.env.FACEBOOK_CLIENT_SECRET
 );
 
 // create instance of MongoDB
