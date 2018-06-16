@@ -28,7 +28,7 @@ const alexa = new AlexaAPI(
 	process.env.AMAZON_SECRET_KEY
 );
 
-const alexa = async ({ collection }) => {
+const getPageRank = async ({ collection }) => {
 
     Log.info("Fetching Alexa Page Rank...");
 	captureBreadcrumb('Fetching Alexa Page Ranks');
@@ -118,4 +118,4 @@ const alexa = async ({ collection }) => {
     
 };
 
-module.exports = createAction('alexa', alexa);
+module.exports = createAction('getPageRank', getPageRank);

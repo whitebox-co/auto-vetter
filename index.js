@@ -65,7 +65,7 @@ Sentry.asyncContext(async () => {
 		await runAction('getFBLikes', state);
 
 	if (runOpts['choices'].includes('Alexa'))
-		await runAction('alexa', state);
+		await runAction('getPageRank', state);
 
 	if (runOpts['choices'].includes('Update Spreadsheet'))
 		await runAction('updateSheet', state);
