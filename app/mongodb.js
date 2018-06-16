@@ -1,4 +1,4 @@
-const MongoClient = require('mongodb').MongoClient;
+const { MongoClient } = require('mongodb');
 const _ = require('lodash');
 const Sentry = require('./sentry');
 
@@ -29,10 +29,18 @@ class MongoDB {
         }
     }
 
-    close() {
-        this.client.close();
+    /**
+     * Close the connection
+     */
+    async close() {
+        this.client && await this.client.close();
     }
 
+    /**
+     * Get a collection
+     * @param {String} name Collection name
+     * @returns {Object|null} Collection object or null if it failed
+     */
     async getCollection(name) {
         try {
             return await this.client.collection(name);
@@ -42,6 +50,10 @@ class MongoDB {
         }
     }
 
+    /**
+     * Create a collection
+     * @param {String} name Collection name
+     */
     async createCollection(name) {
         try {
             return await this.client.createCollection(name);
@@ -51,6 +63,10 @@ class MongoDB {
         }
     }
 
+    /**
+     * Delete a collection
+     * @param {String} name Collection name
+     */
     async drop(name) {
         try {
             return await this.client.collection(name).drop();
@@ -194,13 +210,6 @@ class MongoDB {
         catch (ex) {
             Sentry.captureException(ex);
         }
-    }
-
-    /**
-     * Close the connection
-     */
-    close() {
-        this.client && this.client.close();
     }
 
 }
