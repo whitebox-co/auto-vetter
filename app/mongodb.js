@@ -185,7 +185,7 @@ class MongoDB {
         const col = this.client.collection(collection);
         // update data
         try {
-            return await col.update(filter, data);
+            return await col.update(filter, data, { upsert: true });
         }
         catch (ex) {
             Sentry.captureException(ex);
@@ -205,7 +205,7 @@ class MongoDB {
         const col = this.client.collection(collection);
         // update data
         try {
-            return await col.updateMany(filter, data);
+            return await col.updateMany(filter, data, { upsert: true });
         }
         catch (ex) {
             Sentry.captureException(ex);
