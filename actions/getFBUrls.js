@@ -117,12 +117,15 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 		catch (ex) {
 			s.fail(`Fail: [${i}] ${url}`);
 			// NOTE: user input
-			mongo.update(collection, { row }, _.merge(minsert, { error: 'Failed to scrape' }));
+			await mongo.update(collection, { row }, _.merge(minsert, { error: 'Failed to scrape' }));
 		}
 	}
 
+	// close the browser
+	await browser.close();
 	// close mongo connection
-    await mongo.close();
+	await mongo.close();
+	
 	Log.info('Done!');
 	
 }
