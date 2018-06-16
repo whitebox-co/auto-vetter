@@ -30,8 +30,8 @@ const mongo = new MongoDB(
  * @param {AppState} param0 Application state object
  */
 const getFBUrls = async ({ db, sheet_id, sheet_ranges }) => {
-    Log.info("Scraping for Facebook URLs...");
 
+    Log.info("Scraping for Facebook URLs...");
 	let s = ora('Getting Sheet data...');
 
 	// authenticate with sheets
@@ -39,7 +39,8 @@ const getFBUrls = async ({ db, sheet_id, sheet_ranges }) => {
 	// connect to mongodb
 	await mongo.connect();
 
-	let data;
+    let data;
+    
 	try {
 		data = await sheets.batchGet(sheet_id, sheet_ranges);
 	}
@@ -108,7 +109,7 @@ const getFBUrls = async ({ db, sheet_id, sheet_ranges }) => {
             const fb = await facebookParse(await page.content());
             // insert the facebook URL into the document
             if (fb != undefined)
-                await mongo.insert(db, _.merge(minsert, { facebook: fb }));
+                await mongo.update(db, { row }, _.merge(minsert, { facebook: fb }));
             
             // complete the spinner
             s.succeed(`Done: [${i}] ${chalk.dim(url)}`);
