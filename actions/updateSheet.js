@@ -23,17 +23,17 @@ const mongo = new MongoDB(
  * Update the spreadsheet with data in mongodb
  * @param {AppState} param0 
  */
-const updateSheet = async ({ db, sheet_id, sheet_name }) => {
+const updateSheet = async ({ collection, sheet_id, sheet_name }) => {
 
     // connect and auth to mongo/sheets
 	await mongo.connect();
 	await sheets.authenticate();
 
     // find the documents for this collection
-	const docs = await mongo.find(db);
+	const docs = await mongo.find(collection);
     // ensure docs exist for this database
 	if (!docs || !docs.length > 0)
-		throw new Error(`Didn't find documents for '${db}'!`);
+		throw new Error(`Didn't find documents for '${collection}'!`);
 
 	// ensure its not empty
 	const validate = input => {
@@ -106,8 +106,8 @@ const updateSheet = async ({ db, sheet_id, sheet_name }) => {
 	Log.info('Updated Sheets!');
 
 	// close mongo connection
-    mongo.close();
-    sheets.close();
+	await mongo.close();
+	
 };
 
 module.exports = createAction('updateSheet', updateSheet);

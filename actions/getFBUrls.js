@@ -29,7 +29,7 @@ const mongo = new MongoDB(
  * Scrape FB urls from a given page
  * @param {AppState} param0 Application state object
  */
-const getFBUrls = async ({ db, sheet_id, sheet_ranges }) => {
+const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 
     Log.info("Scraping for Facebook URLs...");
 	let s = ora('Getting Sheet data...');
@@ -95,7 +95,7 @@ const getFBUrls = async ({ db, sheet_id, sheet_ranges }) => {
 
         // URL isn't valid
 		if (!_.isString(url) || _.isEmpty(url)) {
-			mongo.insert(db, _.merge(minsert, { error: 'Not a valid URL' })); // NOTE: user input
+			await mongo.update(collection, { row }, _.merge(minsert, { error: 'Not a valid URL' })); // NOTE: user input
 			continue;
 		}
 
@@ -109,7 +109,7 @@ const getFBUrls = async ({ db, sheet_id, sheet_ranges }) => {
             const fb = await facebookParse(await page.content());
             // insert the facebook URL into the document
             if (fb != undefined)
-                await mongo.update(db, { row }, _.merge(minsert, { facebook: fb }));
+                await mongo.update(collection, { row }, _.merge(minsert, { facebook: fb }));
             
             // complete the spinner
             s.succeed(`Done: [${i}] ${chalk.dim(url)}`);
@@ -117,14 +117,14 @@ const getFBUrls = async ({ db, sheet_id, sheet_ranges }) => {
 		catch (ex) {
 			s.fail(`Fail: [${i}] ${url}`);
 			// NOTE: user input
-			mongo.insert(db, _.merge(minsert, { error: 'Failed to scrape' }));
+			mongo.update(collection, { row }, _.merge(minsert, { error: 'Failed to scrape' }));
 		}
 	}
 
 	// close mongo connection
-    mongo.close();
-    
-    Log.info('Done!');
+    await mongo.close();
+	Log.info('Done!');
+	
 }
 
 /**

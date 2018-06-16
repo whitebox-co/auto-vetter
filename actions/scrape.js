@@ -21,7 +21,7 @@ const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
 // create instance of sheets
 const sheets = new Sheets(GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET);
 // create the mongo db instance
-const db = new MongoDB(MONGO_HOST, MONGO_PORT, MONGO_DB_NAME);
+const mongo = new MongoDB(MONGO_HOST, MONGO_PORT, MONGO_DB_NAME);
 
 /**
  * Scrape action which creates new scrapes
@@ -155,7 +155,7 @@ const createScrape = async () => {
 
     try {
         // connect to the database
-        await db.connect();
+        await mongo.connect();
     }
     catch (ex) {
         throw ex;
@@ -168,7 +168,7 @@ const createScrape = async () => {
         limit = 100; // 100 tries before giving up on name
 
     // does the collection exist already so we can warn about it
-    while (await db.doesCollectionExist(tempName)) {
+    while (await mongo.doesCollectionExist(tempName)) {
 
         // warn the user that the collection name exists
         Log.warn(`The collection name ${chalk.blue.bold(tempName)} already exists!`);
@@ -211,19 +211,21 @@ const createScrape = async () => {
 
         // user chose to delete the existing collection first
         if (answers.delete)
-            await db.drop(collectionName);
+            await mongo.drop(collectionName);
     }
 
     // insert information about the sheet for the scrape job
+    // TODO: access scrape by separate sheets collection
     // await db.insert('sheets', { name: sheetTitle, spreadsheetId, sheetName, urlColumn: columnLetter });
 
     // log which name we're using for the collection
     Log.info(`The MongoDB collection name is ${chalk.blue.bold(collectionName)}`);
 
     // close mongodb connection
-    db.close();
+    await mongo.close();
 
     return { name: sheetTitle, spreadsheetId, sheetName, urlColumn: columnLetter };
+
 }
 
 /**
@@ -235,8 +237,8 @@ const runScraper = async () => {
     captureBreadcrumb('Grabbing scrape data from database.');
 
     // pull in the existing scrapes
-    await db.connect();
-    const data = await db.find('sheets');
+    await mongo.connect();
+    const data = await mongo.find('sheets');
     const choices = _.map(data, sheet => {
         return {
             name: `${sheet.name} (${sheet.sheetName})`,
@@ -265,7 +267,8 @@ const runScraper = async () => {
     }
 
     // close mongodb connection
-    db.close();
+    await mongo.close();
+    
 }
 
 module.exports = {
