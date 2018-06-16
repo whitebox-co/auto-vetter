@@ -14,7 +14,6 @@ const chalk = require('chalk');
 const cheerio = require('cheerio');
 const program = require('commander');
 const Log = require('./util/log');
-const Scrapy = require('./app/scrapy');
 const Sheets = require('./app/sheets');
 const Facebook = require('./app/facebook');
 const sleep = require('./util/sleep');
@@ -37,13 +36,6 @@ const { runAction } = require('./actions');
 const sheets = new Sheets(
 	process.env.GOOGLE_CLIENT_ID,
 	process.env.GOOGLE_CLIENT_SECRET
-);
-
-// create instance of scrapy
-const scrapy = new Scrapy(
-	process.env.SCRAPY_API_KEY,
-	process.env.SCRAPY_PROJECT_ID,
-	process.env.SCRAPY_SPIDER
 );
 
 // create instance of Facebook
