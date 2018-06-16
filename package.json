@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "Scraper tool for Whitebox",
   "main": "index.js",
-  "scripts": {
-    "babel": "babel-node"
-  },
   "author": "James Stine",
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.com/whitebox/auto-vetter.git"
+  },
   "license": "ISC",
   "dependencies": {
     "alexa": "0.0.1-e",
@@ -37,20 +38,5 @@
     "request-promise": "^4.2.2",
     "window-size": "^1.1.0",
     "wordwrap": "^1.0.0"
-  },
-  "devDependencies": {
-    "babel-cli": "^6.26.0",
-    "babel-plugin-async-to-promises": "^1.0.5",
-    "babel-plugin-transform-async-to-generator": "^6.24.1",
-    "babel-preset-env": "^1.7.0",
-    "babel-preset-es2017": "^6.24.1"
-  },
-  "babel": {
-    "presets": [
-      "es2017"
-    ],
-    "plugins": [
-      "transform-async-to-generator"
-    ]
   }
 }
