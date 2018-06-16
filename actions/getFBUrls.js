@@ -6,14 +6,30 @@ const puppeteer = require('puppeteer');
 const cheerio = require('cheerio');
 const urlparse = require('../util/urlparse');
 const chalk = require('chalk');
+const MongoDB = require('../app/mongodb');
+const Sheets = require('../app/sheets');
 
+// regex for FB URLs
 const FB_REGEX = /^((?:http|https):\/\/)?(?:www.)?facebook.com\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[?\w\-]*\/)?(?:profile.php\?id=(?=\d.*))?([\w\.-]*)?/;
+
+// create instance of sheets
+const sheets = new Sheets(
+	process.env.GOOGLE_CLIENT_ID,
+	process.env.GOOGLE_CLIENT_SECRET
+);
+
+// create instance of MongoDB
+const mongo = new MongoDB(
+	process.env.MONGO_HOST,
+	process.env.MONGO_PORT,
+	process.env.MONGO_DB_NAME
+);
 
 /**
  * Scrape FB urls from a given page
- * @param {Object} param0 Object of things to pass to the function
+ * @param {AppState} param0 Application state object
  */
-const getFBUrls = async ({ sheets, mongo, sheet_id, sheet_ranges }) => {
+const getFBUrls = async ({ db, sheet_id, sheet_ranges }) => {
     Log.info("Scraping for Facebook URLs...");
 
 	let s = ora('Getting Sheet data...');
@@ -64,7 +80,7 @@ const getFBUrls = async ({ sheets, mongo, sheet_id, sheet_ranges }) => {
     });
     
     // create instance of puppeteer browser
-    const browser = await puppeteer.launch({ headless: false });
+    const browser = await puppeteer.launch({ headless: true });
     const page = await browser.newPage();
 
     // loop over documents
@@ -89,7 +105,7 @@ const getFBUrls = async ({ sheets, mongo, sheet_id, sheet_ranges }) => {
             // go to the URL
             await page.goto(url);
             // parse the page for Facebook URL
-            const fb = await facebookParse(page.content());
+            const fb = await facebookParse(await page.content());
             // insert the facebook URL into the document
             if (fb != undefined)
                 await mongo.insert(db, _.merge(minsert, { facebook: fb }));

@@ -31,8 +31,6 @@ const ProgressBar = require('progress');
 // curry the breadcrumb function
 const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
 
-const FB_REGEX = /^((?:http|https):\/\/)?(?:www.)?facebook.com\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[?\w\-]*\/)?(?:profile.php\?id=(?=\d.*))?([\w\.-]*)?/;
-
 const { runAction } = require('./actions');
 
 // create instance of sheets
@@ -66,11 +64,19 @@ const alexa = new AlexaAPI(
 	process.env.AMAZON_SECRET_KEY
 );
 
-let db = '';
-let sheet_id = '';
-let sheet_name = '';
-let sheet_ranges = [];
-let new_ranges = [];
+/**
+ * State of the application
+ * @typedef {Object} AppState
+ * @param {String} 	db 				Collection name
+ * @param {String} 	sheet_id		Spreadsheed ID
+ * @param {Array[]} sheet_ranges	Spreadsheet ranges used for Company and URL columns
+ */
+const state = {
+	db: undefined,
+	sheet_id: undefined,
+	sheet_name: undefined,
+	sheet_ranges: []
+};
 
 // log the header
 console.log(boxen(
@@ -84,7 +90,7 @@ const alexaFn = async () => {
 	captureBreadcrumb('Fetching Alexa Page Ranks');
 
 	await mongo.connect();
-	const docs = await mongo.find(db, { url: { $ne: null } });
+	const docs = await mongo.find(state.db, { url: { $ne: null } });
 
 	// start a progress bar
 	const bar = new ProgressBar(chalk.bold.green('Progress') + ' [:bar] (:current/:total)', {
@@ -141,7 +147,7 @@ const alexaFn = async () => {
 			// loop over our ranks and update
 			for (let j = 0; j < ranks.length; j++)
 				if (typeof ranks[j] === 'string')
-					await mongo.update(db, { _id: docs[i + j]._id }, { $set: { alexa_rank: _.parseInt(ranks[j]) } });
+					await mongo.update(state.db, { _id: docs[i + j]._id }, { $set: { alexa_rank: _.parseInt(ranks[j]) } });
 
 		}
 		catch (ex) {
@@ -150,7 +156,7 @@ const alexaFn = async () => {
 
 			// set on all of the batched URLs that it failed for this batch
 			for (let j = 0; j < urls.length; j++)
-				mongo.update(db, { _id: docs[i + j] }, { $set: { error: 'Alexa Batch failed!' } });
+				mongo.update(state.db, { _id: docs[i + j] }, { $set: { error: 'Alexa Batch failed!' } });
 		}
 
 		// sleep to not overload the API
@@ -308,101 +314,6 @@ const killdupeFn = async () => {
 	console.log(response.result);
 }
 
-const facebookFn = async () => {
-
-	Log.info("Scraping for Facebook URLs...");
-
-	let s = ora('Getting Sheet data...');
-
-	// authenticate with sheets
-	await sheets.authenticate();
-
-	// connect to mongodb
-	await mongo.connect();
-
-	let data;
-	try {
-		data = await sheets.batchGet(sheet_id, sheet_ranges);
-	}
-	catch (ex) {
-		Log.error(ex);
-		for (let error of ex.errors)
-			Log.error(error.message);
-		throw ex;
-	}
-
-	// get the values from the data
-	if (!data) {
-		s.fail('No data!');
-		throw Error('Data null');
-	}
-
-	// done with fetching sheets data
-	s.succeed('Done!');
-
-
-	// separate out the data
-	// NOTE: user input
-	const companies = data.valueRanges[0].values.shift();
-	const urls = data.valueRanges[1].values.shift();
-
-	// collection of row data
-	let rows = [];
-
-	for (let i in urls) {
-		rows.push({
-			row: _.parseInt(i) + 2,
-			company: _.trim(companies[i]),
-			url: urlparse(_.trim(urls[i]))
-		})
-	}
-
-	// remove any of the duplicates
-	rows = _.uniqWith(rows, (i, j) => {
-		return i.url === j.url;
-	});
-
-	for (let i = 0; i < rows.length; i++) {
-		// NOTE: user input
-		const row = rows[i].row;
-		const url = rows[i].url;
-		const company = companies[i];
-
-		const minsert = { row, company, url };
-
-		if (!url) {
-			mongo.insert(db, _.merge(minsert, { error: 'Not a valid URL' })); // NOTE: user input
-			continue;
-		}
-
-		s = ora(`Loading URL ${chalk.dim(url)} ...`).start();
-
-		try {
-			const html = await request({
-				url,
-				followRedirect: true,
-				timeout: 10 * 1000,
-				headers: {
-					'User-Agent': 'node.js'
-				}
-			});
-			s.succeed(`Done! (${chalk.dim(url)}):${i}`);
-			const fb = await facebookParse(html);
-			await mongo.insert(db, _.merge(minsert, { facebook: fb }));
-		}
-		catch (ex) {
-			s.fail('Oh no!');
-			// NOTE: user input
-			mongo.insert(db, _.merge(minsert, { error: 'Failed to scrape' }));
-		}
-	}
-
-	Log.info('Done!');
-
-	// close mongo connection
-	mongo.close();
-}
-
 async function facebookParse(html) {
 	let fburl = null;
 
@@ -428,14 +339,14 @@ async function facebookParse(html) {
 	const data = await runAction('create_scrape');
 
 	// store sheet id
-	sheet_id = data['spreadsheetId'];
-	sheet_name = data['sheetName'];
+	state.sheet_id = data['spreadsheetId'];
+	state.sheet_name = data['sheetName'];
 	// store the db name
-	db = sheet_id.slice(0, 10) + sheet_name;
+	state.db = state.sheet_id.slice(0, 10) + state.sheet_name;
 	// assumes data starts at row 2
-	sheet_ranges = [
-		`${sheet_name}!A2:A`,
-		`${sheet_name}!${data['urlColumn']}2:${data['urlColumn']}`
+	state.sheet_ranges = [
+		`${state.sheet_name}!A2:A`,
+		`${state.sheet_name}!${data['urlColumn']}2:${data['urlColumn']}`
 	];
 
 	// the scrape run options
