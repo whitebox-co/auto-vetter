@@ -269,6 +269,6 @@ const runScraper = async () => {
 }
 
 module.exports = {
-    create_scrape: createAction('Create new scrape', createScrape),
-    run_scrape: createAction('Run scraper', runScraper)
+    create_scrape: createAction('create_scrape', createScrape),
+    run_scrape: createAction('run_scrape', runScraper)
 };

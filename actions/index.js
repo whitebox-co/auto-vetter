@@ -30,14 +30,15 @@ const getActions = () => {
 
 /**
  * Runs the action of the given text field or false on failure
- * @param   {String}  text
+ * @param   {String}    text
+ * @param   {Object}    args
  * @returns {Promise|false}
  */
-const runAction = async text => {
+const runAction = async (text, args = undefined) => {
     const index = getActions().indexOf(text);
     if (index != -1)
-        return actions[index].func();
-    return false;
+        return await actions[index].func(args);
+    throw new Error(`No such action '${text}'`);
 }
 
 module.exports = { createAction, getActions, runAction };

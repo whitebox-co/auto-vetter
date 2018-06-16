@@ -33,7 +33,7 @@ const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
 
 const FB_REGEX = /^((?:http|https):\/\/)?(?:www.)?facebook.com\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[?\w\-]*\/)?(?:profile.php\?id=(?=\d.*))?([\w\.-]*)?/;
 
-const { create_scrape } = require('./actions/scrape');
+const { runAction } = require('./actions');
 
 // create instance of sheets
 const sheets = new Sheets(
@@ -425,9 +425,8 @@ async function facebookParse(html) {
 // main async loop
 (async () => {
 	// return data back
-	const data = await create_scrape();
+	const data = await runAction('create_scrape');
 
-	// process the data
 	// store sheet id
 	sheet_id = data['spreadsheetId'];
 	sheet_name = data['sheetName'];
@@ -452,7 +451,7 @@ async function facebookParse(html) {
    // run the commands
    await Sentry.asyncContext(async () => {
 		if (runOpts['choices'].includes('Facebook'))
-			await facebookFn();
+			await runAction('getFBUrls', { sheet_id, sheet_ranges, mongo, sheets });
 		if (runOpts['choices'].includes('Facebook Likes'))
 			await likesFn();
 		if (runOpts['choices'].includes('Alexa'))
