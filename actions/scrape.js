@@ -178,7 +178,7 @@ const createScrape = async () => {
             type: 'confirm',
             name: 'use',
             message: 'Do you want to use the existing collection?',
-            default: false
+            default: true
         }]);
 
         // if we don't want to rename then just break out of loop
