@@ -59,6 +59,7 @@ const getPageRank = async ({ collection }) => {
                 break;
             urls.push(docs[i + j].url);
 		}
+
 		captureBreadcrumb('Batching URLs', { urls });
 
 		try {
@@ -103,8 +104,20 @@ const getPageRank = async ({ collection }) => {
 			Sentry.captureException(ex);
 
 			// set on all of the batched URLs that it failed for this batch
-			for (let j = 0; j < urls.length; j++)
-				await mongo.update(collection, { _id: docs[i + j] }, { $set: { error: 'Alexa Batch failed!' } });
+			for (let j = 0; j < urls.length; j++) {
+				await mongo.update(
+					collection,
+					{ _id: doc },
+					{
+						$set: {
+							error: {
+								...(_.isObject(docs[i + j].error) ? docs[i + j].error : { legacy: docs[i + j].error }),
+								alexa: ex.message
+							}
+						}
+					}
+				);
+			}
 		}
 
 		// sleep to not overload the API

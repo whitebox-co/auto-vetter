@@ -95,7 +95,19 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 
         // URL isn't valid
 		if (!_.isString(url) || _.isEmpty(url)) {
-			await mongo.update(collection, { row }, _.merge(minsert, { error: 'Not a valid URL' })); // NOTE: user input
+			await mongo.update(
+				collection,
+				{ row },
+				{
+					$set: {
+						...minsert,
+						error: {
+							...(_.isObject(row.error) ? row.error : { legacy: row.error }),
+							scrape: 'Not a valid URL'
+						}
+					}
+				}
+			);
 			continue;
 		}
 
@@ -106,10 +118,10 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
             // go to the URL
             await page.goto(url);
             // parse the page for Facebook URL
-            const fb = await facebookParse(await page.content());
+            const facebook = await facebookParse(await page.content());
             // insert the facebook URL into the document
-            if (_.isString(fb) && !_.isEmpty(fb))
-                await mongo.update(collection, { row }, _.merge(minsert, { facebook: fb }));
+            if (_.isString(facebook) && !_.isEmpty(facebook))
+				await mongo.update(collection, { row }, { $set: { ...minsert, facebook } });
             
             // complete the spinner
             s.succeed(`Done: [${i}] ${chalk.dim(url)}`);
@@ -117,9 +129,21 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 		catch (ex) {
 			s.fail(`Fail: [${i}] ${url}`);
 			// NOTE: user input
-			await mongo.update(collection, { row }, _.merge(minsert, { error: 'Failed to scrape' }));
+			await mongo.update(
+				collection,
+				{ row },
+				{
+					$set: {
+						...minsert,
+						error: {
+							...(_.isObject(row.error) ? row.error : { legacy: row.error }),
+							scrape: ex.message
+						}
+					}
+				}
+			);
 		}
-	}
+	} 
 
 	// close the browser
 	await browser.close();
