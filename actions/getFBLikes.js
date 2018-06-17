@@ -7,8 +7,8 @@ const MongoDB = require('../app/mongodb');
 const ora = require('ora');
 const Sentry = require('../app/sentry');
 
-// regex for likes on the page
-const LIKES_REGEX = new RegExp(/([0-9,]+) people like this/g);
+// likes URL base
+const FB_LIKES_URL = 'https://www.facebook.com/plugins/fan.php?id=';
 
 // create instance of sheets
 const sheets = new Sheets(
@@ -49,30 +49,53 @@ const getFBLikes = async ({ collection }) => {
         const doc = docs[i];
         const s = ora().start(`Fetching Likes from ${doc.facebook}`);
 
+        // get url and slice off end slash if one exists
+        const url = doc.facebook.endsWith('/') ? doc.facebook.slice(0, -1) : doc.facebook;
+
         try {
             // goto the facebook page
-            await page.goto(doc.facebook);
-            // get page content
+            await page.goto(FB_LIKES_URL + url);
+            // get the content from the page
             const content = await page.content();
-            // get the likes baby
-            const matches = LIKES_REGEX.exec(content);
+
+            // get likes with regex
+            const matches = /([0-9,]+) likes/.exec(content);
+            // strip the commas from the number
+            const likes = matches[1].replace(/,/, '');
 
             // add the likes to the mongo db
-            if (_.isArray(matches) && matches[1])
-                await mongo.update(collection, { row: doc.row }, { $set: { likes: matches[1] } });
+            if (_.isEmpty(likes))
+                throw new Error("Couldn't find any Likes");
+
+            // update the doc with likes
+            await mongo.update(collection, { row: doc.row }, { $set: { likes: _.toNumber(likes) } });
 
             // we did it
-            s.succeed(`Found ${matches[1]} likes (${doc.facebook})`);
+            s.succeed(`Found ${likes} likes (${url})`);
         }
         catch (ex) {
             // we didn't do it
-            s.fail(`Likes failed for ${doc.facebook}`);
+            s.fail(`Likes failed for ${url}`);
+            Log.error(ex.message);
             // add an error for good measure
-            await mongo.update(collection, { _id: doc._id }, { $set: { error_likes: ex.message } });
+            await mongo.update(
+                collection,
+                { _id: doc._id },
+                {
+                    $set: {
+                        error: {
+                            ...(_.isObject(doc.error) ? doc.error : { legacy: doc.error }),
+                            likes: ex.message
+                        }
+                    }
+                }
+            );
         }
         
     }
 
+    // close the browser
+    await browser.close();
     // close mongo connection
     await mongo.close();
 
