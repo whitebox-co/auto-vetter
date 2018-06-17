@@ -30,7 +30,7 @@ const updateSheet = async ({ collection, sheet_id, sheet_name }) => {
 	await sheets.authenticate();
 
     // find the documents for this collection
-	const docs = await mongo.find(collection);
+	const docs = await mongo.find(collection, {}, { sort: { row: 1 } });
     // ensure docs exist for this database
 	if (!docs || !docs.length > 0)
 		throw new Error(`Didn't find documents for '${collection}'!`);

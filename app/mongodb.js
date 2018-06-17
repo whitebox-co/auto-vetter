@@ -97,14 +97,15 @@ class MongoDB {
      * Find documents on a collection with a filter
      * @param {String} collection 
      * @param {Object} filter 
+     * @param {Object} options
      * @returns {Array<Object>}
      */
-    async find(collection, filter = {}) {     
+    async find(collection, filter = {}, options = {}) {     
         try {
             if (!this.client)
                 throw new Error('No valid connection.');
             const col = this.client.collection(collection);
-            return await col.find(filter).toArray();
+            return await col.find(filter, options).toArray();
         }
         catch (ex) {
             Sentry.captureException(ex);
