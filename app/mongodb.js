@@ -161,7 +161,7 @@ class MongoDB {
                 }
             ]);
 
-            cursor.forEach(doc => {
+            cursor.forEach(async doc => {
                 // skip the first element
                 doc.duplicates.shift();
                 // for each delete them
