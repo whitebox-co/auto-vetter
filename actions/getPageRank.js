@@ -7,6 +7,7 @@ const _ = require('lodash');
 const Sentry = require('../app/sentry');
 const AlexaAPI = require('alexa');
 const sleep = require('../util/sleep');
+const chalk = require('chalk');
 
 // curry the breadcrumb function
 const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
