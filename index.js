@@ -54,10 +54,10 @@ Sentry.asyncContext(async () => {
 		}
 	]);
 
-	// form the state to pass to the actions
+	// app state to pass to actions
 	const state = { sheet_id, sheet_name, collection, sheet_ranges };
 
-   // run the commands
+	// run the commands
 	if (runOpts['choices'].includes('Facebook'))
 		await runAction('getFBUrls', state);
 

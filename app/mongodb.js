@@ -39,7 +39,7 @@ class MongoDB {
     /**
      * Get a collection
      * @param {String} name Collection name
-     * @returns {Object|null} Collection object or null if it failed
+     * @returns {Promise<(Object|null)>} Collection object or null if it failed
      */
     async getCollection(name) {
         try {
@@ -53,6 +53,7 @@ class MongoDB {
     /**
      * Create a collection
      * @param {String} name Collection name
+     * @returns {Promise} Completes when collection is created
      */
     async createCollection(name) {
         try {
@@ -66,6 +67,7 @@ class MongoDB {
     /**
      * Delete a collection
      * @param {String} name Collection name
+     * @returns {Promise} Completes when collection has been dropped
      */
     async drop(name) {
         try {
@@ -93,16 +95,15 @@ class MongoDB {
 
     /**
      * Find documents on a collection with a filter
-     * @param {Object} collection 
+     * @param {String} collection 
      * @param {Object} filter 
-     * @returns {Array[Object]}
+     * @returns {Array<Object>}
      */
-    async find(collection, filter = {}) {
-        if (!this.client)
-            return;
-
-        const col = this.client.collection(collection);
+    async find(collection, filter = {}) {     
         try {
+            if (!this.client)
+                throw new Error('No valid connection.');
+            const col = this.client.collection(collection);
             return await col.find(filter).toArray();
         }
         catch (ex) {
@@ -112,16 +113,15 @@ class MongoDB {
 
     /**
      * Insert data into a collection
-     * @param {Object} collection 
+     * @param {String} collection 
      * @param {Object} data 
+     * @returns {Promise} Complete when data is inserted
      */
     async insert(collection, data) {
-        if (!this.client)
-            return;
-
-        const col = this.client.collection(collection);
-        // insert data
         try {
+            if (!this.client)
+                throw new Error('No valid connection.');
+            const col = this.client.collection(collection);
             return await col.insert(data);
         }
         catch (ex) {
@@ -131,16 +131,17 @@ class MongoDB {
 
     /**
      * Remove duplicates based on a string
-     * @param {Object} collection 
+     * @param {String} collection 
      * @param {String} field 
+     * @returns {Promise} Complete when all duplicates are removed
      */
     async removeDuplicates(collection, field) {
-        if (!this.client)
-            return;
-
-        const col = this.client.collection(collection);
-
         try {
+            if (!this.client)
+                throw new Error('No valid connection.');
+
+            const col = this.client.collection(collection);
+            
             const _id = {};
             _id[field] = '$'+field;
             const dups = [];
@@ -164,7 +165,7 @@ class MongoDB {
                 // skip the first element
                 doc.duplicates.shift();
                 // for each delete them
-                col.remove({ _id: { $in: doc.duplicates }});
+                await col.remove({ _id: { $in: doc.duplicates }});
             });
         }
         catch (ex) {
@@ -174,17 +175,17 @@ class MongoDB {
 
     /**
      * Update a document on a collection based on a filter
-     * @param {Object} collection 
+     * @param {String} collection 
      * @param {Object} filter 
      * @param {Object} data 
+     * @returns {Promise} Complete when update is finished
      */
     async update(collection, filter, data) {
-        if (!this.client)
-            return;
-
-        const col = this.client.collection(collection);
-        // update data
         try {
+            if (!this.client)
+                throw new Error('No valid connection.');
+    
+            const col = this.client.collection(collection);
             return await col.update(filter, data, { upsert: true });
         }
         catch (ex) {
@@ -194,17 +195,17 @@ class MongoDB {
 
     /**
      * Update many documents on a collection based on a filter
-     * @param {Object} collection 
+     * @param {String} collection 
      * @param {Object} filter 
      * @param {Object} data 
+     * @returns {Promise} Complete when update is finished
      */
     async updateMany(collection, filter, data) {
-        if (!this.client)
-            return;
-
-        const col = this.client.collection(collection);
-        // update data
         try {
+            if (!this.client)
+                throw new Error('No valid connection.');
+    
+            const col = this.client.collection(collection);
             return await col.updateMany(filter, data, { upsert: true });
         }
         catch (ex) {
