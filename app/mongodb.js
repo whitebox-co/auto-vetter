@@ -149,7 +149,7 @@ class MongoDB {
                 {
                     $group: {
                         _id,
-                        dups: { $addToSet: '$_id' },
+                        duplicates: { $addToSet: '$_id' },
                         count: { $sum: 1 }
                     }
                 },
@@ -164,7 +164,7 @@ class MongoDB {
                 // skip the first element
                 doc.duplicates.shift();
                 // for each delete them
-                col.remove({ _id: { $in: doc.dups }});
+                col.remove({ _id: { $in: doc.duplicates }});
             });
         }
         catch (ex) {
