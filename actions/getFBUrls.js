@@ -108,7 +108,7 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
             // parse the page for Facebook URL
             const fb = await facebookParse(await page.content());
             // insert the facebook URL into the document
-            if (fb != undefined)
+            if (_.isString(fb) && !_.isEmpty(fb))
                 await mongo.update(collection, { row }, _.merge(minsert, { facebook: fb }));
             
             // complete the spinner
