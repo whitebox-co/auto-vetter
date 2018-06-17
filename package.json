@@ -1,6 +1,6 @@
 {
   "name": "auto-vetter",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Scraper tool for Whitebox",
   "main": "index.js",
   "author": "James Stine",
