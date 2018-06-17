@@ -6,6 +6,7 @@ const Log = require('../util/log');
 const _ = require('lodash');
 const Sentry = require('../app/sentry');
 const AlexaAPI = require('alexa');
+const sleep = require('../util/sleep');
 
 // curry the breadcrumb function
 const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
@@ -106,7 +107,7 @@ const getPageRank = async ({ collection }) => {
 		}
 
 		// sleep to not overload the API
-		sleep(500);
+		await sleep(500);
 	}
 
 	Log.info('Done!');
