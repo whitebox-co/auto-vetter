@@ -6,6 +6,7 @@ const Sheets = require('../app/sheets');
 const MongoDB = require('../app/mongodb');
 const ora = require('ora');
 const Sentry = require('../app/sentry');
+const request = require('request-promise');
 
 // likes URL base
 const FB_LIKES_URL = 'https://www.facebook.com/plugins/fan.php?id=';
@@ -55,6 +56,7 @@ const getFBLikes = async ({ collection }) => {
         try {
             // goto the facebook page
             await page.goto(FB_LIKES_URL + url);
+            //const content = await request(FB_LIKES_URL + url);
             // get the content from the page
             const content = await page.content();
 

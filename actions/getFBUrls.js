@@ -8,6 +8,7 @@ const urlparse = require('../util/urlparse');
 const chalk = require('chalk');
 const MongoDB = require('../app/mongodb');
 const Sheets = require('../app/sheets');
+const request = require('request-promise');
 
 // regex for FB URLs
 const FB_REGEX = /^((?:http|https):\/\/)?(?:www.)?facebook.com\/(?:(?:\w)*#!\/)?(?:pages\/)?(?:[?\w\-]*\/)?(?:profile.php\?id=(?=\d.*))?([\w\.-]*)?/;
@@ -81,8 +82,8 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
     });
     
     // create instance of puppeteer browser
-    const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
+    //const browser = await puppeteer.launch({ headless: true });
+    //const page = await browser.newPage();
 
     // loop over documents
 	for (let i = 0; i < rows.length; i++) {
@@ -116,9 +117,11 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 
 		try {
             // go to the URL
-            await page.goto(url);
+			// await page.goto(url);
+			const result = await request(url);
+
             // parse the page for Facebook URL
-            const facebook = await facebookParse(await page.content());
+            const facebook = await facebookParse(result/*await page.content()*/);
             // insert the facebook URL into the document
 			await mongo.update(collection, { row }, { $set: { ...minsert, facebook } });
             
@@ -145,7 +148,7 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 	} 
 
 	// close the browser
-	await browser.close();
+	// await browser.close();
 	// close mongo connection
 	await mongo.close();
 	
