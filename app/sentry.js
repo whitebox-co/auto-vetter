@@ -50,11 +50,21 @@ class Sentry {
      */
     captureException(err) {
         // print error
-        printError(err);
+        try {
+            printError(err);
+        }
+        catch (ex) {
+
+        }
         // capture the exeption with raven
-        Raven.captureException(err);
-        // kill the process
-        process.exit(1);
+        Raven.captureException(err, (err, id) => {
+            if (err) {
+                Log.error('Failed to send captured exception to Sentry :( ' + id);
+            }
+
+            // kill the process
+            process.exit(1);
+        });
     }
 
     /**
