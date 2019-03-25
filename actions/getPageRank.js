@@ -33,12 +33,13 @@ const alexa = new AlexaAPI(
 const getPageRank = async ({ collection }) => {
 
     Log.info("Fetching Alexa Page Rank...");
+
 	captureBreadcrumb('Fetching Alexa Page Ranks');
 
-    // connect to mongodb
-    await mongo.connect();
-    
-    // find docs on this collection
+	// connect to mongodb
+	await mongo.connect();
+	
+	// find docs on this collection
 	const docs = await mongo.find(collection, { url: { $ne: null } });
 
 	// start a progress bar
@@ -56,8 +57,8 @@ const getPageRank = async ({ collection }) => {
 		// try to get 5 at a time or cap out
 		for (let j = 0; j < 5; j++) {
 			if (docs[i + j] == null)
-                break;
-            urls.push(docs[i + j].url);
+				break;
+			urls.push(docs[i + j].url);
 		}
 
 		captureBreadcrumb('Batching URLs', { urls });
@@ -107,7 +108,7 @@ const getPageRank = async ({ collection }) => {
 			for (let j = 0; j < urls.length; j++) {
 				await mongo.update(
 					collection,
-					{ _id: doc },
+					{ _id: docs[i + j]._id },
 					{
 						$set: {
 							error: {
@@ -119,7 +120,6 @@ const getPageRank = async ({ collection }) => {
 				);
 			}
 		}
-
 		// sleep to not overload the API
 		await sleep(500);
 	}
