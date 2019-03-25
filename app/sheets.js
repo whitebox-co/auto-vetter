@@ -94,7 +94,7 @@ class Sheets {
 
     /**
      * Gets an array of sheets
-     * @param   {String} spreadsheetId
+     * @param   {String} spreadsheetId The spreadsheet from Google Sheets
      * @returns {Promise}
      */
     async getSheets(spreadsheetId) {

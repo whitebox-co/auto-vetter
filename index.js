@@ -13,6 +13,7 @@ const Log = require('./util/log');
 const boxen = require('boxen');
 const inquirer = require('inquirer');
 const Sentry = require('./app/sentry');
+const moment = require('moment');
 
 const { runAction } = require('./actions');
 
