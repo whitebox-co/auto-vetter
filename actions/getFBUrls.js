@@ -118,7 +118,7 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 		try {
             // go to the URL
 			// await page.goto(url);
-			const result = await request(url);
+			const result = await request(url.toLowerCase(), { timeout: 10000, followOriginalHttpMethod: true });
 
             // parse the page for Facebook URL
             const facebook = await facebookParse(result/*await page.content()*/);
