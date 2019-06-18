@@ -93,6 +93,65 @@ class Sheets {
     }
 
     /**
+     * Create a new sheet
+     * @param {String} spreadsheetId Spreadsheet ID to add sheet to
+     * @param {String} name The name of the sheet
+     * @param {Color} color Color for the tab
+     */
+    async createSheet(spreadsheetId, name, color = { red: 0, blue: 0, green: 0, alpha: 1 }) {
+        captureBreadcrumb('Creating a new sheet', { spreadsheetId, name });
+        try {
+            const ret = await sheets.spreadsheets.batchUpdate({
+                auth: this.oauth_client,
+                spreadsheetId,
+                requestBody: {
+                    requests: [
+                        {
+                            addSheet: {
+                                properties: {
+                                    title: "AV Data",
+                                    tabColor: color,
+                                }
+                            }
+                        }
+                    ]
+                }
+            });
+
+            await sheets.spreadsheets.batchUpdate({
+                auth: this.oauth_client,
+                spreadsheetId,
+                requestBody: {
+                    requests: [
+                        {
+                            repeatCell: {
+                                range: {
+                                    startRowIndex: 0,
+                                    endRowIndex: 1,
+                                    sheetId: ret.data.replies[0].addSheet.properties.sheetId
+                                },
+                                cell: {
+                                    userEnteredFormat: {
+                                        backgroundColor: { red: 0, blue: 0, green: 0, alpha: 1 },
+                                        textFormat: {
+                                            bold: true,
+                                            foregroundColor: { red: 1, blue: 1, green: 1, alpha: 1 }
+                                        }
+                                    }
+                                },
+                                fields: "userEnteredFormat(backgroundColor,textFormat)",
+                            }
+                        }
+                    ]
+                }
+            });
+        }
+        catch (ex) {
+            Log.error(ex.message);
+        }
+    }
+
+    /**
      * Gets an array of sheets
      * @param   {String} spreadsheetId The spreadsheet from Google Sheets
      * @returns {Promise}

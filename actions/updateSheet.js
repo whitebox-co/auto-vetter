@@ -23,84 +23,48 @@ const mongo = new MongoDB(
  * Update the spreadsheet with data in mongodb
  * @param {AppState} param0 
  */
-const updateSheet = async ({ collection, sheet_id, sheet_name }) => {
+const updateSheet = async ({ collection, sheet_id  }) => {
 
     // connect and auth to mongo/sheets
 	await mongo.connect();
 	await sheets.authenticate();
 
     // find the documents for this collection
-	const docs = await mongo.find(collection, {}, { sort: { row: 1 } });
+	const docs = await mongo.find(collection, { url: { $ne: "" } });
     // ensure docs exist for this database
 	if (!docs || !docs.length > 0)
 		throw new Error(`Didn't find documents for '${collection}'!`);
 
-	// ensure its not empty
-	const validate = input => {
-		return input.length > 0;
-	}
-
-	// query for columns
-	const rs = await inquirer.prompt([
-		{
-			type: 'text',
-			name: 'fburl',
-			message: 'Enter the letter column for Facebook URLs',
-			validate
-		},
-		{
-			type: 'text',
-			name: 'likes',
-			message: 'Enter the letter column for Facebook Likes',
-			validate
-		},
-		{
-			type: 'text',
-			name: 'alexa',
-			message: 'Enter the letter column for Alexa Rank',
-			validate
-		}
-	]);
+	// make sure av data sheet is created
+	await sheets.createSheet(sheet_id, 'AV Data');
 
 	// set the new ranges
-	const new_ranges = [
-		`${sheet_name}!${rs['fburl']}2:${rs['fburl']}`,
-		`${sheet_name}!${rs['likes']}2:${rs['likes']}`,
-		`${sheet_name}!${rs['alexa']}2:${rs['alexa']}`
+	const ranges = [
+		'AV Data!A:A',
+		'AV Data!B:B',
+		'AV Data!C:C',
+		'AV Data!D:D'
 	];
 
 	Log.info("Updating spreadsheet...");
 
-	// ranges array for batch updat
-	// NOTE: user input
-	const ranges = new_ranges;
 	// values arrays
-	const fburls = [];
-	const likes = [];
-	const aranks = [];
-
-	// get a last row index to the first in the docs
-	let lastRow = docs[0].row;
+	const urls = ['URL'];
+	const fburls = ['Facebook'];
+	const likes = ['Likes'];
+	const aranks = ['Alexa'];
 
 	// loop over all the docs
 	for (let i in docs) {
-		const row = _.parseInt(docs[i].row);
-		if (row - lastRow > 1) {
-			for (let j = 0; j < (row - lastRow) - 1; j++) {
-				fburls.push('');
-				likes.push('');
-				aranks.push('');
-			}
-		}
-		fburls.push(docs[i].facebook);
+		urls.push(docs[i].url);
+		fburls.push(docs[i].hasOwnProperty('facebook') ? docs[i].facebook : null);
 		likes.push(docs[i].hasOwnProperty('likes') ? docs[i].likes : null);
 		aranks.push(docs[i].alexa_rank);
-		lastRow = docs[i].row;
 	}
 
 	// update the sheets
 	const s = ora('Updating Sheets...');
-	await sheets.batchUpdate(sheet_id, ranges, [ fburls, likes, aranks ]);
+	await sheets.batchUpdate(sheet_id, ranges, [ urls, fburls, likes, aranks ]);
 	s.succeed('Done!');
 
 	Log.info('Updated Sheets!');
