@@ -7,6 +7,7 @@ const MongoDB = require('../app/mongodb');
 const ora = require('ora');
 const Sentry = require('../app/sentry');
 const request = require('request-promise');
+const inquirer = require('inquirer');
 
 // likes URL base
 const FB_LIKES_URL = 'https://www.facebook.com/plugins/fan.php?id=';
@@ -58,12 +59,30 @@ const getFBLikes = async ({ collection }) => {
             await page.goto(FB_LIKES_URL + url);
             //const content = await request(FB_LIKES_URL + url);
             // get the content from the page
-            const content = await page.content();
+            let content = await page.content();
 
             // get likes with regex
-            const matches = /([0-9,]+) likes/.exec(content);
-            // strip the commas from the number
-            const likes = matches[1].replace(/,/, '');
+            let matches = /([0-9,]+) likes/.exec(content);
+            // initialize likes 
+            let likes = 0;
+
+            // ensure matches comes back
+            if (!matches || matches.length < 1) {
+                // Trying to resolve new URL?
+                await page.goto(url);
+                // get new content
+                content = await page.content();
+                // get likes with regex
+                matches = /([0-9,]+) likes/.exec(content);
+
+                // valid match set the likes
+                if (matches && matches.length > 0)
+                    likes = matches[1].replace(/,/, '');
+            }
+            else {
+                // valid regex
+                likes = matches[1].replace(/,/, '');
+            }
 
             // add the likes to the mongo db
             if (_.isEmpty(likes))
@@ -103,4 +122,125 @@ const getFBLikes = async ({ collection }) => {
 
 };
 
-module.exports = createAction('getFBLikes', getFBLikes);
+/**
+ * Get Facebook likes from the spreadsheet's FB row.
+ * @param {Object} state State of application
+ */
+const getFBLikesSS = async urls => {
+
+    // create a new browser instance
+    let browser = await puppeteer.launch({ headless: true });
+    // load up a new page
+    let page = await browser.newPage();
+
+    // empty return data array
+    const retLikes = [];
+
+    const response = await inquirer.prompt([
+        {
+            type: 'number',
+            name: 'start',
+            message: 'What index do you want to start at?',
+            default: 0
+        },
+        {
+            type: 'number',
+            name: 'limit',
+            message: 'How many iterations to run? (0 for all)',
+            default: 0
+        }
+    ]);
+
+    // set end point 
+    const end = response.limit == 0 ? urls.length : _.toNumber(response.start) + _.toNumber(response.limit);
+
+    Log.info(`Running from ${response.start} to ${end}...`);
+
+    // loop over the fb urls
+    for (let i = response.start; i < end; i++) {
+
+        if (i % 10 == 0) {
+            await page.close();
+            await browser.close();
+
+            // load up a new page
+            browser = await puppeteer.launch({ headless: true });
+            page = await browser.newPage();
+
+            require('fs').writeFileSync('out.json', retLikes);
+        }
+
+        // current url
+        const url = urls[i];
+
+        // ignore empty urls
+        if (_.isEmpty(url)) {
+            retLikes.push(0);
+            continue;
+        }
+
+        // create spinner and reference to doc
+        const s = ora().start(`Fetching Likes from ${url} (${i}/${end})`);
+
+        try {
+            // goto the facebook page
+            await page.goto(FB_LIKES_URL + url);
+            //const content = await request(FB_LIKES_URL + url);
+            // get the content from the page
+            let content = await page.content();
+
+            // get likes with regex
+            let matches = /([0-9,]+) likes/.exec(content);
+            // initialize likes 
+            let likes = 0;
+
+            // ensure matches comes back
+            if (!matches || matches.length < 1) {
+                // Trying to resolve new URL?
+                await page.goto(url);
+                // get new content
+                content = await page.content();
+                // get likes with regex
+                matches = /([0-9,]+) likes/.exec(content);
+
+                // valid match set the likes
+                if (matches && matches.length > 0)
+                    likes = matches[1].replace(/,/, '');
+            }
+            else {
+                // valid regex
+                likes = matches[1].replace(/,/, '');
+            }
+
+            // add the likes to the mongo db
+            if (_.isEmpty(likes))
+                likes = 0;
+
+            // add this FB likes to the array
+            retLikes.push(_.toNumber(likes));
+
+            // we did it
+            s.succeed(`Found ${likes} likes for ${url} (${i}/${end})`);
+        }
+        catch (ex) {
+            // we didn't do it
+            s.fail(`Likes failed for ${url} (${i}/${end})`);
+            Log.error(ex.message);
+
+            // add this FB likes to the array
+            retLikes.push(0);
+        }
+        
+    }
+
+    // close the browser
+    await browser.close();
+
+    return retLikes;
+
+};
+
+module.exports = {
+    getFBLikes: createAction('getFBLikes', getFBLikes),
+    getFBLikesSS: createAction('getFBLikesSS', getFBLikesSS)
+}

@@ -161,6 +161,8 @@ const createScrape = async () => {
         throw ex;
     }
 
+    // TODO: create sheet entry
+
     // create variables for collection name
     let collectionName = spreadsheetId.slice(0, 10) + sheetName, // the collection name
         tempName = collectionName, // temp collection name in case we get conflict
@@ -271,7 +273,144 @@ const runScraper = async () => {
     
 }
 
+const queryFBScrape = async () => {
+    // variables used within this function
+    let answers, sheetInfo, sheetNames, spreadsheetId;
+
+    try {
+        // authenticate with the client
+        await sheets.authenticate();
+    }
+    catch (ex) {
+        throw ex;
+    }
+
+    captureBreadcrumb('Initializing FB Likes scrape from startup');
+
+    // loop over until we accept
+    while (true) {
+        // ask for the spreadsheet ID
+        answers = await inquirer.prompt([{
+            type: 'input',
+            name: 'spreadsheetId',
+            message: 'Enter the Google Spreadsheet ID',
+            validate: async input => {
+                // ensure the entry isn't empty
+                if (_.isEmpty(input))
+                    return 'Spreadsheet ID can\'t be empty.';
+
+                // get sheet names to see if the id is valid
+                try {
+                    sheetInfo = await sheets.getSpreadsheetInfo(input);
+                }
+                catch (err) {
+                    // sheet request came back 404 (notFound)
+                    if (err.code == 404)
+                        return 'Spreadsheet ID not found!';
+
+                    // rethrow the exception
+                    throw err;
+                }
+
+                sheetTitle = sheetInfo.properties.title;
+                sheetNames = _.map(sheetInfo, 'sheets.properties.title');
+                spreadsheetId = input;
+
+                return true;
+            }
+        }]);
+
+        // ask if this is the right one
+        answers = await inquirer.prompt([{
+            type: 'confirm',
+            name: 'yes',
+            message: `${sheetInfo.properties.title}, is that correct?`
+        }]);
+
+        if (answers.yes)
+            break;
+
+    }
+
+    // breadcrumb our sheet ID as a successful action
+    captureBreadcrumb('User selected spreadsheet ID', { spreadsheetId });
+
+    try {
+        // get information about the spreadsheet
+        sheetNames = await sheets.getSheets(spreadsheetId);
+    }
+    catch (ex) {
+        throw ex;
+    }
+
+    // verify that our sheet names is an array
+    if (!_.isArray(sheetNames))
+        throw new Error('Sheet names came back not as an array');
+    if (!sheetNames.length)
+        throw new Error('No sheet names found');
+
+    // get which sheet to use
+    answers = await inquirer.prompt([{
+        type: 'list',
+        name: 'sheetName',
+        message: 'Which sheet are we using',
+        choices: sheetNames
+    }]);
+
+    // get the sheet name out from answers
+    const sheetName = answers.sheetName;
+
+    // get the header column data for this sheet
+    // NOTE: this assumes header row is on row 1
+    const colsData = await sheets.get(spreadsheetId, `${sheetName}!1:1`, 'ROWS');
+    // get the column values from the data
+    let colsValues = colsData.values.shift();
+
+    // create an incr variable for column to letter in the remap
+    let colIncr = 1;
+    // map the values array
+    colsValues = _.map(colsValues, col => {
+        return { name: col, value: sheets.columnToLetter(colIncr++) };
+    });
+
+    // get which column for URLs to use
+    answers = await inquirer.prompt([{
+        type: 'list',
+        name: 'columnLetter',
+        message: 'Which column is for Facebook URLs',
+        choices: colsValues
+    }]);
+
+    // TODO: make this a separate function
+    // BEGIN COLUMN REQUEST
+
+    // get the column letter
+    const columnLetter = answers.columnLetter;
+
+    // form the range for the request
+    // NOTE: this assumes header row is on row 1
+    const range = `${sheetName}!${columnLetter}2:${columnLetter}`;
+
+    // grab all the column data from this range
+    const urlData = await sheets.get(spreadsheetId, range);
+    // ensure that the values property exists
+    if (!_.has(urlData, 'values'))
+        throw new Error(`Column '${columnLetter}' does not contain any values!`);
+
+    // get the URL values
+    const urlValues = urlData.values.shift();
+
+    // END COLUMN REQUEST
+
+    // log how many URLs we have
+    Log.info(`This sheet has ${chalk.blue.bold(urlValues.length)} Facebook requests to scrape.`);
+
+    return { spreadsheetId, sheetName, urlColumn: columnLetter, urls: urlValues };
+
+}
+
 module.exports = {
     create_scrape: createAction('create_scrape', createScrape),
-    run_scrape: createAction('run_scrape', runScraper)
+    run_scrape: createAction('run_scrape', runScraper),
+    fb_prep: createAction('fb_prep', queryFBScrape)
 };

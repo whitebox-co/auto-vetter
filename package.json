@@ -23,7 +23,7 @@
     "dotenv": "^4.0.0",
     "error-stack-parser": "^2.0.2",
     "express": "^4.16.4",
-    "googleapis": "^32.0.0",
+    "googleapis": "^41.0.1",
     "http-shutdown": "^1.2.0",
     "inquirer": "^3.3.0",
     "lodash": "^4.17.13",
