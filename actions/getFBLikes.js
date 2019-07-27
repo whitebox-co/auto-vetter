@@ -77,11 +77,11 @@ const getFBLikes = async ({ collection }) => {
 
                 // valid match set the likes
                 if (matches && matches.length > 0)
-                    likes = matches[1].replace(/,/, '');
+                    likes = matches[1].replace(/,/g, '');
             }
             else {
                 // valid regex
-                likes = matches[1].replace(/,/, '');
+                likes = matches[1].replace(/,/g, '');
             }
 
             // add the likes to the mongo db
@@ -205,11 +205,11 @@ const getFBLikesSS = async urls => {
 
                 // valid match set the likes
                 if (matches && matches.length > 0)
-                    likes = matches[1].replace(/,/, '');
+                    likes = matches[1].replace(/,/g, '');
             }
             else {
                 // valid regex
-                likes = matches[1].replace(/,/, '');
+                likes = matches[1].replace(/,/g, '');
             }
 
             // add the likes to the mongo db
