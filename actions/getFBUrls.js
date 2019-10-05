@@ -72,7 +72,7 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 		rows.push({
 			row: _.parseInt(i) + 2,
 			company: _.trim(companies[i]),
-			url: urlparse(_.trim(urls[i]))
+			url: urls[i]
 		})
 	}
 
@@ -88,7 +88,7 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
     // loop over documents
 	for (let i = 0; i < rows.length; i++) {
 		const row = rows[i].row;
-		const url = rows[i].url;
+		const url = urlparse(rows[i].url);
 		const company = companies[i];
 
         // create object used to insert into mongodb
