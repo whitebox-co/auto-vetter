@@ -23,6 +23,7 @@ class MongoDB {
         try {
             const url = `mongodb://${this.host}:${this.port}/${this.db}`;
             this.client = await MongoClient.connect(url);
+            this.clientDB = this.client.db(this.db);
         }
         catch (ex) {
             Sentry.captureException(ex);
@@ -43,7 +44,7 @@ class MongoDB {
      */
     async getCollection(name) {
         try {
-            return await this.client.collection(name);
+            return await this.clientDB.collection(name);
         }
         catch (ex) {
             return null;
@@ -57,7 +58,7 @@ class MongoDB {
      */
     async createCollection(name) {
         try {
-            return await this.client.createCollection(name);
+            return await this.clientDB.createCollection(name);
         }
         catch (ex) {
             Sentry.captureException(ex);
@@ -71,7 +72,7 @@ class MongoDB {
      */
     async drop(name) {
         try {
-            return await this.client.collection(name).drop();
+            return await this.clientDB.collection(name).drop();
         }
         catch (ex) {
             Sentry.captureException(ex);
@@ -85,7 +86,7 @@ class MongoDB {
      */
     async doesCollectionExist(name) {
         try {
-            const data = await this.client.listCollections().toArray();
+            const data = await this.clientDB.listCollections().toArray();
             return _.map(data, 'name').indexOf(name) != -1;
         }
         catch (ex) {
@@ -104,7 +105,7 @@ class MongoDB {
         try {
             if (!this.client)
                 throw new Error('No valid connection.');
-            const col = this.client.collection(collection);
+            const col = this.clientDB.collection(collection);
             return await col.find(filter, options).toArray();
         }
         catch (ex) {
@@ -122,7 +123,7 @@ class MongoDB {
         try {
             if (!this.client)
                 throw new Error('No valid connection.');
-            const col = this.client.collection(collection);
+            const col = this.clientDB.collection(collection);
             return await col.insert(data);
         }
         catch (ex) {
@@ -141,7 +142,7 @@ class MongoDB {
             if (!this.client)
                 throw new Error('No valid connection.');
 
-            const col = this.client.collection(collection);
+            const col = this.clientDB.collection(collection);
             
             const _id = {};
             _id[field] = '$'+field;
@@ -186,7 +187,7 @@ class MongoDB {
             if (!this.client)
                 throw new Error('No valid connection.');
     
-            const col = this.client.collection(collection);
+            const col = this.clientDB.collection(collection);
             return await col.update(filter, data, { upsert: true });
         }
         catch (ex) {
@@ -206,7 +207,7 @@ class MongoDB {
             if (!this.client)
                 throw new Error('No valid connection.');
     
-            const col = this.client.collection(collection);
+            const col = this.clientDB.collection(collection);
             return await col.updateMany(filter, data, { upsert: true });
         }
         catch (ex) {

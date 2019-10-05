@@ -8,7 +8,7 @@
  * @author James Stine <Leon.Blade@gmail.com>
  */
 
-const opn = require('opn');
+const open = require('open');
 const express = require('express');
 const app = express();
 const shutdownable = require('http-shutdown');
@@ -28,7 +28,7 @@ let server;
  */
 const auth_me = async url => {
     // open the url
-    opn(url);
+    open(url);
     // spawn server and wait for creds
     const creds = await spawn();
     // kill server
