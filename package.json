@@ -13,6 +13,7 @@
   },
   "license": "ISC",
   "dependencies": {
+    "@sentry/node": "^5.6.2",
     "alexa": "0.0.1-e",
     "assert": "^2.0.0",
     "asyncawait": "^1.0.6",

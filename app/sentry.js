@@ -1,46 +1,17 @@
 const printError = require('../util/printError');
-const Raven = require('raven');
+const Sentry = require('@sentry/node');
 
 require('dotenv').config();
 
-class Sentry {
+class MySentry {
 
     constructor() {
         try {
             // configure and install raven for sentry
-            Raven.config(process.env.SENTRY_DSN).install();
+            Sentry.init({ dsn: process.env.SENTRY_DSN });
         }
         catch (ex) {
             printError(ex);
-        }
-    }
-
-    /**
-     * Wrapper for Raven.context
-     * @param   {Function} fn Context function captures all exceptions and handles them
-     */
-    context(fn) {
-        Raven.context(fn);
-    }
-
-    /**
-     * Wrapper for Raven.wrap
-     * @param   {Function} fn Wrap the function to be executed later.
-     */
-    wrap(fn) {
-        Raven.wrap(fn);
-    }
-
-    /**
-     * Simulates Raven.context for async functions
-     * @param   {Function} fn Async context
-     */
-    async asyncContext(fn) {
-        try {
-            await fn();
-        }
-        catch (err) {
-            this.captureException(err);
         }
     }
 
@@ -57,14 +28,7 @@ class Sentry {
 
         }
         // capture the exeption with raven
-        Raven.captureException(err, (err, id) => {
-            if (err) {
-                Log.error('Failed to send captured exception to Sentry :( ' + id);
-            }
-
-            // kill the process
-            process.exit(1);
-        });
+        Sentry.captureException(err);
     }
 
     /**
@@ -74,17 +38,17 @@ class Sentry {
      * @param   {Object} data       Data object for additional information
      */
     captureBreadcrumb(category, message, data) {
-        Raven.captureBreadcrumb({ category, message, data });
+        Sentry.addBreadcrumb({ category, data, message });
     }
 
     /**
      * Wrapper for Raven.captureMessage
-     * @param   {String|Object}  message [description]
+     * @param   {String|Object} message description
      */
     captureMessage(message) {
-        Raven.captureMessage(message);
+        Sentry.captureMessage(message);
     }
 
 }
 
-module.exports = new Sentry();
+module.exports = new MySentry();
