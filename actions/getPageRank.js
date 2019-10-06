@@ -1,9 +1,8 @@
 const { createAction } = require('./');
 const MongoDB = require('../app/mongodb');
-const Sheets = require('../app/sheets');
 const ProgressBar = require('progress');
 const Log = require('../util/log');
-const { isObject, parseInt, curry } = require('lodash');
+const { parseInt, curry } = require('lodash');
 const Sentry = require('../app/sentry');
 const AWIS = require('../app/alexa');
 const sleep = require('../util/sleep');
@@ -22,7 +21,7 @@ const mongo = new MongoDB(
 // create instance of AlexaAPI
 const alexa = new AWIS(process.env.AWIS_KEY);
 
-const getPageRank = async ({ collection }) => {
+const getPageRank = async ({ collection, fetchAll = true }) => {
 
     Log.info("Fetching Alexa Page Rank...");
 
@@ -30,9 +29,13 @@ const getPageRank = async ({ collection }) => {
 
 	// connect to mongodb
 	await mongo.connect();
+
+	const opts = { url: { $ne: null } };
+	if (!fetchAll)
+		opts.alexa_rank = NaN;
 	
 	// find docs on this collection
-	const docs = await mongo.find(collection, { url: { $ne: null } });
+	const docs = await mongo.find(collection, opts);
 
 	// start a progress bar
 	const bar = new ProgressBar(chalk.bold.green('Progress') + ' [:bar] (:current/:total)', {

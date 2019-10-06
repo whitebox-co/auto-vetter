@@ -2,21 +2,13 @@ const { createAction } = require('./');
 const _ = require('lodash');
 const puppeteer = require('puppeteer');
 const Log = require('../util/log');
-const Sheets = require('../app/sheets');
 const MongoDB = require('../app/mongodb');
 const ora = require('ora');
-const Sentry = require('../app/sentry');
-const request = require('request-promise');
 const inquirer = require('inquirer');
 
 // likes URL base
 const FB_LIKES_URL = 'https://www.facebook.com/plugins/fan.php?id=';
 
-// create instance of sheets
-const sheets = new Sheets(
-	process.env.GOOGLE_CLIENT_ID,
-	process.env.GOOGLE_CLIENT_SECRET
-);
 
 // create instance of MongoDB
 const mongo = new MongoDB(
@@ -29,13 +21,16 @@ const mongo = new MongoDB(
  * Gets FB likes for a given collection
  * @param {Object} param0 Application state
  */
-const getFBLikes = async ({ collection }) => {
-
+const getFBLikes = async ({ collection, fetchAll = true }) => {
     // connect to mongo database
     await mongo.connect();
 
+    const opts = { facebook: { $ne: null } };
+    if (!fetchAll)
+        opts.likes = null;
+
     // get the collection docs
-    const docs = await mongo.find(collection, { facebook: { $ne: null } });
+    const docs = await mongo.find(collection, opts);
     if (_.isNull(docs))
         throw new Error(`Collection '${collection}' contains no documents!`);
 
@@ -102,23 +97,15 @@ const getFBLikes = async ({ collection }) => {
             await mongo.update(
                 collection,
                 { _id: doc._id },
-                {
-                    $set: {
-                        error: {
-                            likes: ex.message
-                        }
-                    }
-                }
+                { $set: { error: { likes: ex.message } } }
             );
         }
-        
     }
 
     // close the browser
     await browser.close();
     // close mongo connection
     await mongo.close();
-
 };
 
 /**
@@ -229,14 +216,12 @@ const getFBLikesSS = async urls => {
             // add this FB likes to the array
             retLikes.push(0);
         }
-        
     }
 
     // close the browser
     await browser.close();
 
     return retLikes;
-
 };
 
 module.exports = {

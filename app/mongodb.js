@@ -22,7 +22,7 @@ class MongoDB {
     async connect() {
         try {
             const url = `mongodb://${this.host}:${this.port}/${this.db}`;
-            this.client = await MongoClient.connect(url, { useNewUrlParser: true });
+            this.client = await MongoClient.connect(url, { useNewUrlParser: true, useUnifiedTopology: true });
             this.clientDB = this.client.db(this.db);
         }
         catch (ex) {

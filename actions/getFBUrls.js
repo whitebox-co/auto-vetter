@@ -84,17 +84,16 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
     // create instance of puppeteer browser
     //const browser = await puppeteer.launch({ headless: true });
     //const page = await browser.newPage();
-
-    // loop over documents
+	// loop over documents
 	for (let i = 0; i < rows.length; i++) {
 		const row = rows[i].row;
 		const url = urlparse(rows[i].url);
 		const company = companies[i];
 
-        // create object used to insert into mongodb
+		// create object used to insert into mongodb
 		const minsert = { row, company, url };
 
-        // URL isn't valid
+		// URL isn't valid
 		if (!_.isString(url) || _.isEmpty(url)) {
 			await mongo.update(
 				collection,
@@ -102,30 +101,28 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 				{
 					$set: {
 						...minsert,
-						error: {
-							scrape: 'Not a valid URL'
-						}
+						error: { scrape: 'Not a valid URL' }
 					}
 				}
 			);
 			continue;
 		}
 
-        // start loading indicator
+		// start loading indicator
 		s = ora(`Loading URL ${chalk.dim(url)} ...`).start();
 
 		try {
-            // go to the URL
+			// go to the URL
 			// await page.goto(url);
 			const result = await request(url.toLowerCase(), { timeout: 10000, followOriginalHttpMethod: true });
 
-            // parse the page for Facebook URL
-            const facebook = facebookParse(result/*await page.content()*/);
-            // insert the facebook URL into the document
+			// parse the page for Facebook URL
+			const facebook = facebookParse(result);
+			// insert the facebook URL into the document
 			await mongo.update(collection, { row }, { $set: { ...minsert, facebook } });
-            
-            // complete the spinner
-            s.succeed(`Done: [${i}] ${chalk.dim(url)}`);
+			
+			// complete the spinner
+			s.succeed(`Done: [${i}] ${chalk.dim(url)}`);
 		}
 		catch (ex) {
 			s.fail(`Fail: [${i}] ${url}`);
@@ -137,7 +134,6 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 					$set: {
 						...minsert,
 						error: {
-							...(_.isObject(row.error) ? row.error : { legacy: row.error }),
 							scrape: ex.message
 						}
 					}
@@ -152,6 +148,42 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 	await mongo.close();
 	
 	Log.info('Done!');
+}
+
+function getFacebookURLs(rows) {
+	Log.info("Scraping for Facebook URLs (" + rows.length + ")...");
+	// loop over the rows
+	for (let i = 0; i < rows.length; i++) {
+		// start loading indicator
+		s = ora(`Loading URL ${chalk.dim(url)} ...`).start();
+
+		try {
+			const result = await request(url.toLowerCase(), { timeout: 10000, followOriginalHttpMethod: true });
+			// parse the page for Facebook URL
+			const facebook = facebookParse(result);
+			// insert the facebook URL into the document
+			await mongo.update(collection, { _id: row[i]._id }, { $set: { facebook } });
+			
+			// complete the spinner
+			s.succeed(`Done: [${i}] ${chalk.dim(url)}`);
+		}
+		catch (ex) {
+			s.fail(`Fail: [${i}] ${url}`);
+			// NOTE: user input
+			await mongo.update(
+				collection,
+				{ row },
+				{
+					$set: {
+						...minsert,
+						error: {
+							scrape: ex.message
+						}
+					}
+				}
+			);
+		}
+	}
 }
 
 /**
@@ -179,4 +211,4 @@ function facebookParse(html) {
 	return fburl;
 }
 
-module.exports = createAction('getFBUrls', getFBUrls);
+module.exports = { getFBUrls: createAction('getFBUrls', getFBUrls), getFacebookURLs: createAction('getFacebookURLs', getFacebookURLs) };

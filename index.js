@@ -16,6 +16,7 @@ const Sentry = require('./app/sentry');
 const moment = require('moment');
 const Sheets = require('./app/sheets');
 const ora = require('ora');
+const MongoDB = require('./app/mongodb');
 
 const { runAction } = require('./actions');
 
@@ -32,6 +33,13 @@ const sheets = new Sheets(
 	process.env.GOOGLE_CLIENT_SECRET
 );
 
+// create instance of MongoDB
+const mongo = new MongoDB(
+	process.env.MONGO_HOST,
+	process.env.MONGO_PORT,
+	process.env.MONGO_DB_NAME
+);
+
 // main async loop
 (async () => {
 
@@ -41,8 +49,8 @@ const sheets = new Sheets(
 			name: 'startup',
 			message: 'What would you like to do?',
 			choices: [
-				{ name: 'Create new scrape', value: NEW_SCRAPE },
-				{ name: 'Run existing scrape', value: RUN_SCRAPE },
+				{ name: 'Full scrape', value: NEW_SCRAPE },
+				{ name: 'Run partial existing scrape', value: RUN_SCRAPE },
 				{ name: 'Get Facebook Likes on existing sheet', value: FB_LIKES }
 			]
 		}
@@ -98,10 +106,47 @@ const sheets = new Sheets(
 			Log.info("Scrape completed!");
 			break;
 
-		case RUN_SCRAPE:
-			Log.error('Not currently implemented!');
-			break;
+		case RUN_SCRAPE: {
+			const input = await inquirer.prompt([{
+				type: 'input',
+				name: 'col',
+				message: 'Enter the name of the Mongo Collection to iterate over:'
+			}]);
 
+			// the scrape run options
+			const runOpts = await inquirer.prompt([
+				{
+					type: 'checkbox',
+					name: 'choices',
+					message: 'Pick what you want to scrape for',
+					choices: [
+						{ name: 'Facebook', value: 'fb' }, 
+						{ name: 'Facebook Likes', value: 'likes' },
+						{ name: 'Alexa', value: 'alexa' }
+					]
+				}
+			]);
+
+			// connect to mongo
+			await mongo.connect();
+			// get the collection
+			const col = await mongo.getCollection(input.col);
+
+			if (runOpts.choices.includes('fb')) {
+				const rows = await mongo.find(col, { facebook: null, url: { $ne: null }, url: { $ne: "" } });
+				await runAction('getFacebookURLs', rows);
+			}
+
+			if (runOpts.choices.includes('likes'))
+				await runAction('getFBLikes', { collection: col, fetchAll: false });
+
+			if (runOpts.choices.includes('alexa'))
+				await runAction('getPageRank', { collection: col, fetchAll: false });
+
+			Log.info("Scrape completed!");
+			
+			break;
+		}
 		case FB_LIKES:
 			// get the prep data
 			const { spreadsheetId, urls } = await runAction('fb_prep');
