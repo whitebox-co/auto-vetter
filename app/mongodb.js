@@ -22,7 +22,7 @@ class MongoDB {
     async connect() {
         try {
             const url = `mongodb://${this.host}:${this.port}/${this.db}`;
-            this.client = await MongoClient.connect(url);
+            this.client = await MongoClient.connect(url, { useNewUrlParser: true });
             this.clientDB = this.client.db(this.db);
         }
         catch (ex) {
@@ -205,7 +205,7 @@ class MongoDB {
                 throw new Error('No valid connection.');
     
             const col = this.clientDB.collection(collection);
-            return await col.update(filter, data, { upsert: true });
+            return await col.updateOne(filter, data, { upsert: true });
         }
         catch (ex) {
             Sentry.captureException(ex);
