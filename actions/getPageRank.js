@@ -57,7 +57,7 @@ const getPageRank = async ({ collection }) => {
 
 		try {
 			// fetch the url info for this batch
-			let data = alexa.getURLInfo(urls, 'Rank');
+			let data = await alexa.getURLInfo(urls, 'Rank');
 
 			// set as array for single batches
 			if (!Array.isArray(data))
