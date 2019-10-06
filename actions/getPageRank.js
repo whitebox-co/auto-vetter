@@ -3,14 +3,14 @@ const MongoDB = require('../app/mongodb');
 const Sheets = require('../app/sheets');
 const ProgressBar = require('progress');
 const Log = require('../util/log');
-const { isObject } = require('lodash');
+const { isObject, parseInt, curry } = require('lodash');
 const Sentry = require('../app/sentry');
 const AWIS = require('../app/alexa');
 const sleep = require('../util/sleep');
 const chalk = require('chalk');
 
 // curry the breadcrumb function
-const captureBreadcrumb = _.curry(Sentry.captureBreadcrumb)('scrape');
+const captureBreadcrumb = curry(Sentry.captureBreadcrumb)('scrape');
 
 // create instance of MongoDB
 const mongo = new MongoDB(
@@ -57,10 +57,7 @@ const getPageRank = async ({ collection }) => {
 
 		try {
 			// fetch the url info for this batch
-			const response = alexa.getURLInfo(urls, 'Rank');
-
-			// Get the response data 
-			let data = response['Awis']['Results']['Result'];
+			let data = alexa.getURLInfo(urls, 'Rank');
 
 			// set as array for single batches
 			if (!Array.isArray(data))
@@ -69,24 +66,15 @@ const getPageRank = async ({ collection }) => {
 			// tick by the amount of rows from data
 			bar.tick(data.length);
 
-			// map the array into the ranks
-			const ranks = data.map(value => {
-				try {
-					return value['Alexa']['TrafficData']['Rank'];
-				}
-				// catch any exceptions from blank URLs to return null
-				catch (ex) {
-					Sentry.captureException(ex);
-					return null;
-				}
-			});
-
 			captureBreadcrumb('Received ranks!');
 
 			// loop over our ranks and update
-			for (let j = 0; j < ranks.length; j++)
-				if (typeof ranks[j] === 'string')
-					await mongo.update(collection, { _id: docs[i + j]._id }, { $set: { alexa_rank: _.parseInt(ranks[j]) } });
+			for (let j = 0; j < data.length; j++) {
+				if (data[j].error)
+					await mongo.update(collection, { _id: docs[i + j]._id }, { $set: { alexa_error: data[j].error.message } });
+				else
+					await mongo.update(collection, { _id: docs[i + j]._id }, { $set: { alexa_rank: parseInt(data[j].rank) } });
+			}
 
 		}
 		catch (ex) {
