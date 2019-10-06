@@ -3,8 +3,6 @@ const Sentry = require('./sentry');
 
 class AWIS {
 
-    /** @type {String} */ apiKey;
-
     /**
      * 
      * @param {String} apiKey The API key for AWIS
@@ -35,20 +33,21 @@ class AWIS {
         else {
             // Splice off the first five for the batch.
             const five = urls.splice(0, 5);
+            // Add the shared response group
+            uri += `&UrlInfo.Shared.ResponseGroup=${responseGroup}`;
             // Add the urls to the request uri.
             uri += five.map((url, i) => `&UrlInfo.${i+1}.Url=${url}`).join('');
-            // Add the shared response group
-            uri += `UrlInfo.Shared.ResponseGroup=${responseGroup}`;
         }
 
         // Perform the request and return the result.
-        const response = await request({
+        const response = JSON.parse(await request({
             uri,
             headers: {
-                Accept: 'application/json',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
                 'x-api-key': this.apiKey
             }
-        });
+        }));
 
         // Get the results from the response object.
         const results = response['Awis']['Results'];
@@ -71,7 +70,7 @@ class AWIS {
 
         for (let i = 0; i < result.length; i++) {
             const r = result[i]['Alexa'];
-            if (responseStatus[i]['StatusCode'] != 200)
+            if (status[i]['StatusCode'] != 200)
                 parsed.push({ error: { code: status[i]['StatusCode'], TrafficData: r['TrafficData'], Request: r['Request'] } })
             else
                 parsed.push({ url: r['TrafficData']['DataUrl'], rank: r['TrafficData']['Rank'] });
