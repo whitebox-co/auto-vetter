@@ -3,9 +3,9 @@ const MongoDB = require('../app/mongodb');
 const Sheets = require('../app/sheets');
 const ProgressBar = require('progress');
 const Log = require('../util/log');
-const _ = require('lodash');
+const { isObject } = require('lodash');
 const Sentry = require('../app/sentry');
-const AlexaAPI = require('alexa');
+const AWIS = require('../app/alexa');
 const sleep = require('../util/sleep');
 const chalk = require('chalk');
 
@@ -19,16 +19,8 @@ const mongo = new MongoDB(
 	process.env.MONGO_DB_NAME
 );
 
-// create instance of sheets
-const sheets = new Sheets(
-	process.env.GOOGLE_CLIENT_ID,
-	process.env.GOOGLE_CLIENT_SECRET
-);
-
-const alexa = new AlexaAPI(
-	process.env.AMAZON_ACCESS_KEY,
-	process.env.AMAZON_SECRET_KEY
-);
+// create instance of AlexaAPI
+const alexa = new AWIS(process.env.AWIS_KEY);
 
 const getPageRank = async ({ collection }) => {
 
@@ -64,30 +56,27 @@ const getPageRank = async ({ collection }) => {
 		captureBreadcrumb('Batching URLs', { urls });
 
 		try {
-			const response = await new Promise((resolve, reject) => {
-				alexa.getURLInfo(urls, "Rank", (err, results) => {
-					if (err)
-						return reject(err);
-					return resolve(results);
-				});
-			});
+			// fetch the url info for this batch
+			const response = alexa.getURLInfo(urls, 'Rank');
 
-			let data = response['aws:Response'];
+			// Get the response data 
+			let data = response['Awis']['Results']['Result'];
 
 			// set as array for single batches
-			if (!_.isArray(data))
+			if (!Array.isArray(data))
 				data = [ data ];
 
 			// tick by the amount of rows from data
 			bar.tick(data.length);
 
 			// map the array into the ranks
-			const ranks = _.map(data, value => {
+			const ranks = data.map(value => {
 				try {
-					return value['aws:UrlInfoResult']['aws:Alexa']['aws:TrafficData']['aws:Rank'];
+					return value['Alexa']['TrafficData']['Rank'];
 				}
 				// catch any exceptions from blank URLs to return null
 				catch (ex) {
+					Sentry.captureException(ex);
 					return null;
 				}
 			});
@@ -112,7 +101,7 @@ const getPageRank = async ({ collection }) => {
 					{
 						$set: {
 							error: {
-								...(_.isObject(docs[i + j].error) ? docs[i + j].error : { legacy: docs[i + j].error }),
+								...(isObject(docs[i + j].error) ? docs[i + j].error : { legacy: docs[i + j].error }),
 								alexa: ex.message
 							}
 						}
