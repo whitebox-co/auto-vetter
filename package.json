@@ -8,6 +8,9 @@
     "type": "git",
     "url": "https://gitlab.com/whitebox/auto-vetter.git"
   },
+  "scripts": {
+    "start": "node index.js"
+  },
   "license": "ISC",
   "dependencies": {
     "alexa": "0.0.1-e",
