@@ -103,7 +103,6 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 					$set: {
 						...minsert,
 						error: {
-							...(_.isObject(row.error) ? row.error : { legacy: row.error }),
 							scrape: 'Not a valid URL'
 						}
 					}

@@ -89,7 +89,6 @@ const getPageRank = async ({ collection }) => {
 					{
 						$set: {
 							error: {
-								...(isObject(docs[i + j].error) ? docs[i + j].error : { legacy: docs[i + j].error }),
 								alexa: ex.message
 							}
 						}

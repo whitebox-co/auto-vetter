@@ -105,7 +105,6 @@ const getFBLikes = async ({ collection }) => {
                 {
                     $set: {
                         error: {
-                            ...(_.isObject(doc.error) ? doc.error : { legacy: doc.error }),
                             likes: ex.message
                         }
                     }
