@@ -43,12 +43,20 @@ class MongoDB {
      * @returns {Promise<(Object|null)>} Collection object or null if it failed
      */
     async getCollection(name) {
-        try {
-            return await this.clientDB.collection(name);
-        }
-        catch (ex) {
-            return null;
-        }
+        return new Promise((resolve, reject) => {
+            try {
+                this.clientDB.collection(name, (err, collection) => {
+                    if (err) {
+                        Sentry.captureMessage(err);
+                        reject(err);
+                    }
+                    resolve(collection);
+                });
+            }
+            catch (ex) {
+                return reject(ex);
+            }
+        });
     }
 
     /**
@@ -146,22 +154,31 @@ class MongoDB {
             
             const _id = {};
             _id[field] = '$'+field;
-            const dups = [];
 
-            const cursor = await col.aggregate([
-                {
-                    $group: {
-                        _id,
-                        duplicates: { $addToSet: '$_id' },
-                        count: { $sum: 1 }
+            const cursor = await new Promise((resolve, reject) => {
+                col.aggregate([
+                    {
+                        $group: {
+                            _id,
+                            duplicates: { $addToSet: '$_id' },
+                            count: { $sum: 1 }
+                        }
+                    },
+                    {
+                        $match: {
+                            count: { $gt: 1 }
+                        }
                     }
-                },
-                {
-                    $match: {
-                        count: { $gt: 1 }
+                    ],
+                    (err, result) => {
+                        if (err) {
+                            Sentry.captureMessage(err);
+                            return reject(err);
+                        }
+                        return resolve(result);
                     }
-                }
-            ]);
+                )
+            });
 
             cursor.forEach(async doc => {
                 // skip the first element
