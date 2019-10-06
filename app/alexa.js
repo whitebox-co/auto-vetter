@@ -54,7 +54,7 @@ class AWIS {
 
         // Single URL results.
         if (!Array.isArray(results['Result'])) {            
-            const statusCode = result['ResponseStatus']['StatusCode'];
+            const statusCode = results['ResponseStatus']['StatusCode'];
             const response = results['Result']['Response'];
             if (statusCode != 200) {
                 Sentry.captureMessage('Status Code: ' + statusCode + '\n' + response);
