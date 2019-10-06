@@ -127,14 +127,14 @@ const mongo = new MongoDB(
 				}
 			]);
 
-			// connect to mongo
-			await mongo.connect();
 			// get the collection
-			const col = await mongo.getCollection(input.col);
+			const col = input.col;
+
+			await mongo.connect();
 
 			if (runOpts.choices.includes('fb')) {
 				const rows = await mongo.find(col, { facebook: null, url: { $ne: null }, url: { $ne: "" } });
-				await runAction('getFacebookURLs', rows);
+				await runAction('getFacebookURLs', { rows, collection: col });
 			}
 
 			if (runOpts.choices.includes('likes'))
@@ -144,6 +144,8 @@ const mongo = new MongoDB(
 				await runAction('getPageRank', { collection: col, fetchAll: false });
 
 			Log.info("Scrape completed!");
+
+			mongo.close();
 			
 			break;
 		}

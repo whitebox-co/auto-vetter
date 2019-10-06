@@ -82,7 +82,6 @@ const createScrape = async () => {
 
         if (answers.yes)
             break;
-
     }
 
     // breadcrumb our sheet ID as a successful action
@@ -256,13 +255,9 @@ const runScraper = async () => {
         choices
     }]);
 
-    // pull out the variables for the scrape we want
-    const scrape = data[_.findIndex(data, { _id: answers.scrape })];
-
     try {
         // auth with sheets
         await sheets.authenticate();
-
     }
     catch (err) {
         throw err;

@@ -98,12 +98,7 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 			await mongo.update(
 				collection,
 				{ row },
-				{
-					$set: {
-						...minsert,
-						error: { scrape: 'Not a valid URL' }
-					}
-				}
+				{ $set: { error: { scrape: 'Not a valid URL' } } }
 			);
 			continue;
 		}
@@ -130,30 +125,25 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 			await mongo.update(
 				collection,
 				{ row },
-				{
-					$set: {
-						...minsert,
-						error: {
-							scrape: ex.message
-						}
-					}
-				}
+				{ $set: { error: { scrape: ex } } }
 			);
 		}
 	} 
 
-	// close the browser
-	// await browser.close();
 	// close mongo connection
 	await mongo.close();
 	
 	Log.info('Done!');
 }
 
-function getFacebookURLs(rows) {
+async function getFacebookURLs({ collection, rows }) {
 	Log.info("Scraping for Facebook URLs (" + rows.length + ")...");
+	await mongo.connect();
+	let s = ora('Getting Sheet data...');
 	// loop over the rows
 	for (let i = 0; i < rows.length; i++) {
+		const row = rows[i];
+		const url = row.url;
 		// start loading indicator
 		s = ora(`Loading URL ${chalk.dim(url)} ...`).start();
 
@@ -162,7 +152,7 @@ function getFacebookURLs(rows) {
 			// parse the page for Facebook URL
 			const facebook = facebookParse(result);
 			// insert the facebook URL into the document
-			await mongo.update(collection, { _id: row[i]._id }, { $set: { facebook } });
+			await mongo.update(collection, { _id: row._id }, { $set: { facebook } });
 			
 			// complete the spinner
 			s.succeed(`Done: [${i}] ${chalk.dim(url)}`);
@@ -172,15 +162,8 @@ function getFacebookURLs(rows) {
 			// NOTE: user input
 			await mongo.update(
 				collection,
-				{ row },
-				{
-					$set: {
-						...minsert,
-						error: {
-							scrape: ex.message
-						}
-					}
-				}
+				{ _id: row._id },
+				{ $set: { error: { scrape: ex.statusCode + " - " + ex.statusMessage } } }
 			);
 		}
 	}
