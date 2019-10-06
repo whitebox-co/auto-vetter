@@ -19,14 +19,8 @@ const ora = require('ora');
 
 const { runAction } = require('./actions');
 
-
-console.log(Date.now());
-
 // log the header
-console.log(boxen(
-	chalk.black('Whitebox Auto Vetter'),
-	{ padding: 1, backgroundColor: 'white' }
-));
+console.log(chalk.green('Whitebox Auto Vetter'));
 
 const NEW_SCRAPE = Symbol('NEW_SCRAPE');
 const RUN_SCRAPE = Symbol('RUN_SCRAPE');
@@ -39,7 +33,7 @@ const sheets = new Sheets(
 );
 
 // main async loop
-Sentry.asyncContext(async () => {
+(async () => {
 
 	const startupOpts = await inquirer.prompt([
 		{
@@ -139,10 +133,8 @@ Sentry.asyncContext(async () => {
 			s.succeed('Done!');
 
 			Log.info('Updated Sheets!');
-			
-			console.log(Date.now());
 
 			break;
 	}
 
-});
+})();
