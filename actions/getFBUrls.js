@@ -121,7 +121,7 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 			const result = await request(url.toLowerCase(), { timeout: 10000, followOriginalHttpMethod: true });
 
             // parse the page for Facebook URL
-            const facebook = await facebookParse(result/*await page.content()*/);
+            const facebook = facebookParse(result/*await page.content()*/);
             // insert the facebook URL into the document
 			await mongo.update(collection, { row }, { $set: { ...minsert, facebook } });
             
@@ -153,7 +153,6 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 	await mongo.close();
 	
 	Log.info('Done!');
-	
 }
 
 /**
@@ -161,7 +160,7 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
  * @param {String} html 
  * @returns {String|undefined} String if URL found, undefined if none found
  */
-async function facebookParse(html) {
+function facebookParse(html) {
 	// get instance of cheerio for this html
     const $ = cheerio.load(html);
     
@@ -169,7 +168,7 @@ async function facebookParse(html) {
     let fburl;
 
 	// search for Facebook URL
-	$('a').each((i, elem) => {
+	$('a').each((_, elem) => {
 		const href = $(elem).attr('href')
 		if (href) {
 			const matches = href.match(FB_REGEX);
