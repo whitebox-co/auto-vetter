@@ -89,13 +89,7 @@ const getPageRank = async ({ collection, fetchAll = true }) => {
 				await mongo.update(
 					collection,
 					{ _id: docs[i + j]._id },
-					{
-						$set: {
-							error: {
-								alexa: ex.message
-							}
-						}
-					}
+					{ $set: { error: "alexa error: " + ex.message } }
 				);
 			}
 		}

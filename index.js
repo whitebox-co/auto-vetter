@@ -10,10 +10,7 @@ require('dotenv').config();
 // require modules needed for this file
 const chalk = require('chalk');
 const Log = require('./util/log');
-const boxen = require('boxen');
 const inquirer = require('inquirer');
-const Sentry = require('./app/sentry');
-const moment = require('moment');
 const Sheets = require('./app/sheets');
 const ora = require('ora');
 const MongoDB = require('./app/mongodb');

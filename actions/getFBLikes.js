@@ -97,7 +97,7 @@ const getFBLikes = async ({ collection, fetchAll = true }) => {
             await mongo.update(
                 collection,
                 { _id: doc._id },
-                { $set: { error: { likes: ex.message } } }
+                { $set: { error: "likes error: " + ex.message  } }
             );
         }
     }

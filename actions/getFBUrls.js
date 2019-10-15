@@ -125,7 +125,7 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 			await mongo.update(
 				collection,
 				{ row },
-				{ $set: { error: { scrape: ex } } }
+				{ $set: { error: "scrape error" } }
 			);
 		}
 	} 
@@ -163,7 +163,7 @@ async function getFacebookURLs({ collection, rows }) {
 			await mongo.update(
 				collection,
 				{ _id: row._id },
-				{ $set: { error: { scrape: ex.statusCode + " - " + ex.statusMessage } } }
+				{ $set: { error: ex.statusCode + " - " + ex.statusMessage } }
 			);
 		}
 	}
