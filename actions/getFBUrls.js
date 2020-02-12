@@ -87,14 +87,15 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 	// loop over documents
 	for (let i = 0; i < rows.length; i++) {
 		const row = rows[i].row;
-		const url = urlparse(rows[i].url);
+		const url = rows[i].url;
+		const new_url = urlparse(rows[i].url);
 		const company = companies[i];
 
 		// create object used to insert into mongodb
-		const minsert = { row, company, url };
+		const minsert = { row, company, url, new_url };
 
 		// URL isn't valid
-		if (!_.isString(url) || _.isEmpty(url)) {
+		if (!_.isString(new_url) || _.isEmpty(new_url)) {
 			await mongo.update(
 				collection,
 				{ row },
@@ -104,13 +105,13 @@ const getFBUrls = async ({ collection, sheet_id, sheet_ranges }) => {
 		}
 
 		// start loading indicator
-		s = ora(`Loading URL ${chalk.dim(url)} ...`).start();
+		s = ora(`Loading URL ${chalk.dim(new_url)} ...`).start();
 
 		try {
 			// go to the URL
 			//await page.goto(url);
 			//const result = await page.evaluate(() => document.body.innerHTML);
-			const result = await request(url.toLowerCase(), { timeout: 10000, followOriginalHttpMethod: true, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36' } });
+			const result = await request(new_url.toLowerCase(), { timeout: 10000, followOriginalHttpMethod: true, headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36' } });
 
 			// parse the page for Facebook URL
 			const facebook = facebookParse(result);
