@@ -30,7 +30,7 @@
     "googleapis": "^43.0.0",
     "http-shutdown": "^1.2.1",
     "inquirer": "^7.0.0",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "log-symbols": "^3.0.0",
     "log-update": "^3.3.0",
     "moment": "^2.24.0",
